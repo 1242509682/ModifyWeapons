@@ -24,7 +24,9 @@ namespace ModifyWeapons
                 new SqlColumn("UseTime", MySqlDbType.Int32), //用速
                 new SqlColumn("UseAnimation", MySqlDbType.Int32), //攻速
                 new SqlColumn("Shoot", MySqlDbType.Int32), //弹幕
-                new SqlColumn("ShootSpeed", MySqlDbType.Float) //弹速
+                new SqlColumn("ShootSpeed", MySqlDbType.Float), //弹速
+                new SqlColumn("ReadTime", MySqlDbType.DateTime), //冷却时间
+                new SqlColumn("ReadCount", MySqlDbType.Int32)
             ));
         }
         #endregion
@@ -34,16 +36,16 @@ namespace ModifyWeapons
         {
             // 更新现有记录
             if (TShock.DB.Query(
-                "UPDATE ModifyWeapons SET Enabled = @0, ItemId = @1, Prefix = @2, Damage = @3, Scale = @4, KnockBack = @5, UseTime = @6, UseAnimation = @7, Shoot = @8, ShootSpeed = @9 WHERE Name = @10",
-                data.Enabled ? 1 : 0, data.ItemId, data.Prefix, data.Damage, data.Scale,data.KnockBack, data.UseTime, data.UseAnimation, data.Shoot, data.ShootSpeed, data.Name) != 0)
+                "UPDATE ModifyWeapons SET Enabled = @0, ItemId = @1, Prefix = @2, Damage = @3, Scale = @4, KnockBack = @5, UseTime = @6, UseAnimation = @7, Shoot = @8, ShootSpeed = @9,ReadTime = @10, ReadCount = @11  WHERE Name = @12",
+                data.Enabled ? 1 : 0, data.ItemId, data.Prefix, data.Damage, data.Scale, data.KnockBack, data.UseTime, data.UseAnimation, data.Shoot, data.ShootSpeed, data.ReadTime, data.ReadCount, data.Name) != 0)
             {
                 return true;
             }
 
-            // 如果没有更新到任何记录，则插入新记录
             return TShock.DB.Query(
-                "INSERT INTO ModifyWeapons (Name, Enabled, ItemId, Prefix, Damage, Scale, KnockBack, UseTime, UseAnimation, Shoot, ShootSpeed) VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10)",
-                data.Name, data.Enabled ? 1 : 0, data.ItemId, data.Prefix, data.Damage, data.Scale, data.KnockBack, data.UseTime, data.UseAnimation, data.Shoot, data.ShootSpeed) != 0;
+                "INSERT INTO ModifyWeapons (Name, Enabled, ItemId, Prefix, Damage, Scale, KnockBack, UseTime, UseAnimation, Shoot, ShootSpeed, ReadTime, ReadCount) " +
+                "VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12)",
+                data.Name, data.Enabled ? 1 : 0, data.ItemId, data.Prefix, data.Damage, data.Scale, data.KnockBack, data.UseTime, data.UseAnimation, data.Shoot, data.ShootSpeed, data.ReadTime, data.ReadCount) != 0;
         }
         #endregion
 
@@ -66,7 +68,9 @@ namespace ModifyWeapons
                         UseTime = reader.Get<int>("UseTime"),
                         UseAnimation = reader.Get<int>("UseAnimation"),
                         Shoot = reader.Get<int>("Shoot"),
-                        ShootSpeed = reader.Get<float>("ShootSpeed")
+                        ShootSpeed = reader.Get<float>("ShootSpeed"),
+                        ReadTime = reader.Get<DateTime>("ReadTime"),
+                        ReadCount = reader.Get<int>("ReadCount")
                     };
                 }
             }
@@ -94,7 +98,9 @@ namespace ModifyWeapons
                     useTime: reader.Get<int>("UseTime"),
                     useAnimation: reader.Get<int>("UseAnimation"),
                     shoot: reader.Get<int>("Shoot"),
-                    shootSpeed: reader.Get<float>("ShootSpeed")
+                    shootSpeed: reader.Get<float>("ShootSpeed"),
+                    readTime: reader.Get<DateTime>("ReadTime"),
+                    readCount: reader.Get<int>("ReadCount")
                 ));
             }
 
