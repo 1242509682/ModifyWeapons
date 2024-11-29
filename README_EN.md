@@ -8,6 +8,17 @@
 ## Update Log
 
 ```
+v1.2.0
+- Refactored code to support customization of multiple weapon items.
+- Removed database logic, switched to using configuration files for data storage.
+- When the "Admin-only data creation on join" configuration option is enabled:
+- Player data will only be created after an item is given to that player using the /mw g command.
+- Added more commands:
+  When inputting /mw s or g or up without values, it will prompt the corresponding tutorial.
+  (Successful input will ignore the player's own reload count and immediately update the in-game item status.)
+- Using /mw list supports paging through all modified weapon values (1 per page).
+- The /mw up command will only update specific parameters of the designated player's item, provided the item has been modified before.
+
 v1.1.0
 - Added the ability to synchronize data within the configuration using /reload to the database.
 - If the data table in the configuration is accidentally deleted, restarting the server will write it back from the database to the configuration file.
@@ -45,58 +56,57 @@ v1.0.0
 
 | Syntax                             | Alias  |       Permission       |                   Description                   |
 | -------------------------------- | :---: | :--------------: | :--------------------------------------: |
-| /mw  | None |   mw.use    |    Command menu    |
-| /mw on | None |   mw.use    |    Turn on or off personal login reload    |
-| /mw read | None |   mw.use    |    Manually reload personal weapon stats    |
-| /mw s d 200 ut 20 | /mw set |   mw.admin    |   Modify the attributes of the held item    |
-| /mw g PlayerName ItemName d 200 ut 20 | /mw give |   mw.admin    |   Give a modified item with values to a specified player (Format 1)    |
-| /mw g PlayerName ItemName Damage Size Knockback UseTime AttackSpeed Projectiles ProjectileSpeed | /mw give |   mw.admin    |   Give a modified item with values to a specified player (Format 2)    |
-| /mw open <PlayerName> | None |   mw.admin    |   Modify someone else's login reload function    |
-| /mw del <PlayerName> | None |   mw.admin    |   Delete the specified player's data    |
-| /mw reads | None |   mw.admin    |    Uniformly modify everyone's login reload status    |
-| /mw reset | None |   mw.admin    |   Reset all player data    |
-| /reload  | None |   tshock.cfg.reload    |    Reload the configuration file    |
-| None  | None |   mw.cd    |    Ignore cooldown and count for weapon reload permission    |
+| /mw  | None |   mw.use    |    Command    |
+| /mw hand | None |   mw.use    |    Toggle switch for getting held item info    |
+| /mw join | None |   mw.use    |    Toggle switch for login reload    |
+| /mw list | None |   mw.use    |    List all modified items    |
+| /mw read | None |   mw.use    |    Manually reload all modified items    |
+| /mw open PlayerName | None |   mw.admin    |    Switch another player's login reload state    |
+| /mw add PlayerName Count | None |   mw.admin    |    Add reload counts    |
+| /mw del PlayerName | None |   mw.admin    |    Delete specified player's data    |
+| /mw up | /mw g |   mw.admin    |    Modify specific attributes of a player's existing "modified item"    |
+| /mw set | /mw s |   mw.admin    |    Modify held item attributes    |
+| /mw give | /mw g |   mw.admin    |    Give a player a modified item and create data    |
+| /mw reads | None |   mw.admin    |    Toggle everyone's login reload state    |
+| /mw reset | None |   mw.admin    |    Reset all player data    |
+| /reload  | None |   tshock.cfg.reload    |    Reload configuration file    |
+| None  | None |   mw.cd    |    Ignore cooldown and count for reloading weapons    |
 
 ## Configuration
 > Configuration file location：tshock/修改武器.json
 ```json
 {
-  "PluginSwitch": true,
+  "PluginEnabled": true,
   "InitialReloadCount": 2,
-  "CooldownForAdditionalReloads": 180.0,
-  "DataTable": [
+  "AdminOnlyDataCreationOnJoin": true,
+  "CooldownSecondsForReloadIncrement": 1800.0,
+  "PlayerData": [
     {
       "PlayerName": "Yuxue",
-      "LoginReload": true,
-      "ItemID": 2624,
-      "Prefix": 82,
-      "Damage": 200,
-      "Size": 1.0,
-      "Knockback": 2.0,
-      "UseTime": 1,
-      "AttackSpeed": 30,
-      "Projectiles": 1,
-      "ProjectileSpeed": 10.0,
-      "ReadTime": "2024-11-28T06:28:08.2528562",
-      "ReloadCount": 1
-    },
-    {
-      "PlayerName": "Anan",
-      "LoginReload": true,
-      "ItemID": 3507,
-      "Prefix": 14,
-      "Damage": 500,
-      "Size": 1.0,
-      "Knockback": 4.0,
-      "UseTime": 1,
-      "AttackSpeed": 30,
-      "Projectiles": 938,
-      "ProjectileSpeed": 2.1,
-      "ReadTime": "2024-11-28T07:09:32.7053442",
-      "ReloadCount": 0
+      "ReloadCount": 2,
+      "GetHeldItemInfo": true,
+      "LoginReloadSwitch": true,
+      "LastReloadCooldownTimestamp": "2024-11-29T21:38:42.1398775Z"
     }
-  ]
+  ],
+  "ModifiedItemData": {
+    "Yuxue": [
+      {
+        "ItemId": 4952,
+        "Stack": 1,
+        "Prefix": 0,
+        "Damage": 100,
+        "Size": 0.7,
+        "Knockback": 2.5,
+        "UseTime": 2,
+        "AttackSpeed": 36,
+        "ProjectileId": 931,
+        "ProjectileSpeed": 17.0,
+        "AmmoType": 0,
+        "UsesAmmo": 0
+      }
+    ]
+  }
 }
 ```
 ## FeedBack
