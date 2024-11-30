@@ -7,6 +7,24 @@
 ## 更新日志
 
 ```
+v1.2.1
+加入了/mw all指令给所有在线玩家发指定物品并建立数据
+玩家收到管理发送物品时会提示准确的修改数值与手动重读提醒
+修正了/mw read 播报逻辑
+声明up子命令详情：
+/mw s 或 g 或 all都会先还原其他数值再改指定数值
+而/mw up 玩家名字 物品名 ua 20，这能保留之前的数值直接改指定数值
+物品属性参数详情（也可以用中文名）:
+伤害:d da
+大小:c sc
+击退:k kb
+用速:t ut
+攻速:a ua
+弹幕:h sh
+弹速:s ss
+作弹药:m am
+用弹药:aa uaa
+
 v1.2.0
 重构代码，支持自定义多个武器物品
 移除了数据库逻辑，改用配置文件来存数据
@@ -63,9 +81,10 @@ v1.0.0
 | /mw open 玩家名 | 无 |   mw.admin    |    切换别人进服重读状态    |
 | /mw add 玩家名 次数 | 无 |   mw.admin    |    添加重读次数    |
 | /mw del 玩家名 | 无 |   mw.admin    |    删除指定玩家数据    |
-| /mw up | /mw g |   mw.admin    |    修改玩家已有"修改物品"的指定属性    |
+| /mw up | None |   mw.admin    |    修改玩家已有"修改物品"的指定属性    |
 | /mw set | /mw s |   mw.admin    |    修改自己手持物品属性    |
-| /mw give | /mw g |   mw.admin    |    给玩家修改物品并建数据    |
+| /mw give | /mw g |   mw.admin    |    给指定玩家修改物品并建数据    |
+| /mw all | 无 |   mw.admin    |    给所有玩家修改物品并建数据    |
 | /mw reads | 无 |   mw.admin    |    切换所有人进服重读状态    |
 | /mw reset | 无 |   mw.admin    |    重置所有玩家数据    |
 | /reload  | 无 |   tshock.cfg.reload    |    重载配置文件    |

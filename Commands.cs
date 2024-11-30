@@ -58,20 +58,30 @@ public class Commands
                     if (data != null)
                     {
                         UpdataRead(plr, data);
-
+                        var num = 0;
                         if (ItemData.Value != null)
                         {
-                            // 显示玩家的修改武器
-                            ShowReadItem(plr, ItemData.Value);
-
-                            plr.SendInfoMessage($"[i:4080]如数值不对,请输入指令恢复:[c/3CCB91:/mw read]");
-
-                            if (!plr.HasPermission("mw.admin"))
+                            foreach (var item in ItemData.Value)
                             {
-                                plr.SendInfoMessage($"剩余修改物品重读次数为:[C/A7D3D6:{data.ReadCount = Math.Max(0, data.ReadCount - 1)}]");
+                                if (item.ID != 0 && data.ReadCount != 0 || plr.HasPermission("mw.admin") || plr.HasPermission("mw.cd"))
+                                {
+                                    num++;
+                                }
                             }
 
-                            plr.SendInfoMessage($"手持物品使用:/mw 查看对比信息");
+                            if(num > 0)
+                            {
+                                plr.SendInfoMessage($"\n已成功重读所有修改物品");
+                                num = 0;
+                            }
+
+                            if (!plr.HasPermission("mw.admin") && !plr.HasPermission("mw.cd"))
+                            {
+                                plr.SendInfoMessage($"剩余修改物品重读次数为:[C/A7D3D6:{data.ReadCount}]");
+                            }
+
+                            // 显示玩家的修改武器数量
+                            ShowReadItem(plr, ItemData.Value);
                         }
                     }
                     return;
@@ -295,7 +305,7 @@ public class Commands
                         }
                         //设置物品数值方法
                         SetItem(plr, data, Sel.damage, Sel.scale, Sel.knockBack, Sel.useTime, Sel.useAnimation, Sel.shoot, Sel.shootSpeed, Sel.ammo, Sel.useAmmo);
-                        SetItemMess(plr, ItemData, ItemVal);
+                        SetItemMess(plr, ItemVal);
                     }
                     else
                     {
@@ -429,7 +439,7 @@ public class Commands
                         // 播报给执行者
                         var mess = new StringBuilder();
                         mess.AppendFormat("已成功修改玩家 [{0}] 的武器:[c/92C5EC:{1}] 伤害:[c/FF6975:{2}] 大小:[c/5C9EE1:{3}] 击退:[c/5C9EE1:{4}] " +
-                            "用速:[c/74E55D:{5}] 攻速:[c/94BAE0:{6}] 弹幕:[c/A3E295:{7}] 弹速:[c/F0EC9E:{8}]",
+                            "用速:[c/74E55D:{5}] 攻速:[c/94BAE0:{6}] 弹幕:[c/A3E295:{7}] 弹速:[c/F0EC9E:{8}]\n",
                             other, Lang.GetItemName(item.type), damage, scale, knockBack, useTime, useAnimation, shoot, shootSpeed);
                         plr.SendMessage(mess.ToString(), 255, 244, 150);
 
@@ -440,13 +450,155 @@ public class Commands
                         {
                             UpdataRead(plr2, data2);
                             plr2.SendMessage($"管理员 [c/D4E443:{plr.Name}] 已发送修改物品: [c/92C5EC:{Lang.GetItemName(item.type)}]", 255, 244, 150);
-                            plr2.SendMessage($"输入菜单指令可查看详细修改数值:[c/92D4B7:/mw]", 255, 244, 150);
+                            SetItemMess(plr2, ItemVal);
                         }
                     }
                     else
                     {
                         GiveError(plr);
                     }
+                    break;
+
+                case "all":
+                    if (args.Parameters.Count >= 2 && plr.HasPermission("cmd.admin"))
+                    {
+                        var items = args.Parameters[1];
+                        var Items = TShock.Utils.GetItemByIdOrName(items);
+
+                        if (Items.Count > 1)
+                        {
+                            args.Player.SendMultipleMatchError(Items.Select(i => i.Name));
+                            return;
+                        }
+
+                        var item = Items[0];
+                        item.SetDefaults(item.type);
+                        var damage = item.damage;
+                        var stack = item.maxStack;
+                        var scale = item.scale;
+                        var knockBack = item.knockBack;
+                        var useTime = item.useTime;
+                        var useAnimation = item.useAnimation;
+                        var shoot = item.shoot;
+                        var shootSpeed = item.shootSpeed;
+                        var ammo = item.ammo;
+                        var useAmmo = item.useAmmo;
+
+                        // 解析参数列表中的属性-值对
+                        Dictionary<string, string> ItemVal = new Dictionary<string, string>();
+
+                        for (int i = 2; i < args.Parameters.Count; i += 2)
+                        {
+                            if (i + 1 < args.Parameters.Count) // 确保有下一个参数
+                            {
+                                string ProName = args.Parameters[i].ToLower();
+                                string value = args.Parameters[i + 1];
+                                ItemVal[ProName] = value;
+                            }
+                        }
+
+                        // 更新属性值
+                        foreach (var kvp in ItemVal)
+                        {
+                            switch (kvp.Key.ToLower()) // 将键转换为小写以支持大小写不敏感
+                            {
+                                case "d":
+                                case "da":
+                                case "伤害":
+                                    if (int.TryParse(kvp.Value, out int da)) damage = da;
+                                    break;
+                                case "c":
+                                case "sc":
+                                case "大小":
+                                    if (float.TryParse(kvp.Value, out float sc)) scale = sc;
+                                    break;
+                                case "k":
+                                case "kb":
+                                case "击退":
+                                    if (float.TryParse(kvp.Value, out float kb)) knockBack = kb;
+                                    break;
+                                case "t":
+                                case "ut":
+                                case "用速":
+                                    if (int.TryParse(kvp.Value, out int ut)) useTime = ut;
+                                    break;
+                                case "a":
+                                case "ua":
+                                case "攻速":
+                                    if (int.TryParse(kvp.Value, out int ua)) useAnimation = ua;
+                                    break;
+                                case "h":
+                                case "sh":
+                                case "弹幕":
+                                    if (int.TryParse(kvp.Value, out int sh)) shoot = sh;
+                                    break;
+                                case "s":
+                                case "ss":
+                                case "弹速":
+                                    if (float.TryParse(kvp.Value, out float ss)) shootSpeed = ss;
+                                    break;
+                                case "m":
+                                case "am":
+                                case "作弹药":
+                                case "作为弹药":
+                                    if (int.TryParse(kvp.Value, out int am)) ammo = am;
+                                    break;
+                                case "aa":
+                                case "uaa":
+                                case "用弹药":
+                                case "使用弹药":
+                                    if (int.TryParse(kvp.Value, out int uaa)) useAmmo = uaa;
+                                    break;
+                                default:
+                                    AllError(plr);
+                                    return;
+                            }
+                        }
+
+                        // 遍历所有在线玩家
+                        foreach (var plr2 in TShock.Players.Where(p => p != null && p.IsLoggedIn && p.Active))
+                        {
+                            var acc = plr2.Account.Name;
+                            if (!Config.Dict.ContainsKey(acc))
+                            {
+                                Config.data.Add(new Configuration.PlayerData()
+                                {
+                                    Name = acc,
+                                    Hand = true,
+                                    Join = true,
+                                    ReadCount = Config.ReadCount,
+                                    ReadTime = DateTime.UtcNow,
+                                });
+                                Config.Write();
+                            }
+
+                            var data2 = Config.data.FirstOrDefault(c => c.Name == acc);
+                            data2.Join = true;
+                            data2.ReadCount++;
+
+                            SaveItem(acc, Config.Dict, item.type, stack, item.prefix, damage, scale, knockBack, useTime, useAnimation, shoot, shootSpeed, ammo, useAmmo);
+
+                            //如果目标玩家在线，则发送消息并直接重读数值
+                            if (plr2 != null && plr2.Name == acc && plr2.Active && plr2.IsLoggedIn)
+                            {
+                                UpdataRead(plr2, data2);
+                                plr2.SendMessage($"管理员 [c/D4E443:{plr.Name}] 已发送修改物品: [c/92C5EC:{Lang.GetItemName(item.type)}]", 255, 244, 150);
+                                SetItemMess(plr2, ItemVal);
+                            }
+                        }
+
+                        // 播报给执行者
+                        var mess = new StringBuilder();
+                        mess.AppendFormat("已成功修改所有玩家的武器:[c/92C5EC:{0}] 伤害:[c/FF6975:{1}] 大小:[c/5C9EE1:{2}] 击退:[c/5C9EE1:{3}] " +
+                            "用速:[c/74E55D:{4}] 攻速:[c/94BAE0:{5}] 弹幕:[c/A3E295:{6}] 弹速:[c/F0EC9E:{7}]\n",
+                             Lang.GetItemName(item.type), damage, scale, knockBack, useTime, useAnimation, shoot, shootSpeed);
+                        plr.SendMessage(mess.ToString(), 255, 244, 150);
+                    }
+                    else
+                    {
+                        AllError(plr);
+                    }
+
                     break;
                 default:
                     HelpCmd(args.Player, Sel, data, ItemData);
@@ -456,11 +608,11 @@ public class Commands
     }
 
     #region 设置物品回馈信息
-    private static void SetItemMess(TSPlayer plr, KeyValuePair<string, List<ItemData>> itemdata, Dictionary<string, string> ProValues)
+    private static void SetItemMess(TSPlayer plr, Dictionary<string, string> ProValues)
     {
         // 播报更新信息
         var mess = new StringBuilder();
-        mess.Append($"手持物品使用:/mw 查看对比信息\n");
+        mess.Append($"输入菜单指令可查看详细修改数值:[c/92D4B7:/mw]\n");
         mess.Append($"当前修改数值: ");
 
         foreach (var kvp in ProValues)
@@ -501,7 +653,7 @@ public class Commands
             }
             mess.AppendFormat("[c/94D3E4:{0}]([c/94D6E4:{1}]):[c/FF6975:{2}] ", propName, kvp.Key, kvp.Value);
         }
-
+        mess.AppendFormat("\n数值不对:[c/94D3E4:/mw read]手动重读或重进服务器");
         plr.SendMessage(mess.ToString(), 255, 244, 150);
 
     }
@@ -623,7 +775,7 @@ public class Commands
             });
 
             // 使用逗号分隔物品名称
-            mess.Append($"您已有[C/91DFBB:{WNames.Count}个]修改物品: {string.Join(" ", color)}");
+            mess.Append($"[i:4080]您拥有[C/91DFBB:{WNames.Count}个]修改物品: {string.Join(" ", color)}");
         }
 
         // 发送消息给玩家
@@ -738,7 +890,7 @@ public class Commands
             last = (float)Math.Round((now - data.ReadTime).TotalSeconds, 2);
         }
 
-        if (!plr.HasPermission("mw.cd")) // 没有权限
+        if (!plr.HasPermission("mw.cd") && !plr.HasPermission("mw.admin")) // 没有权限
         {
             if (data.ReadCount >= 1) // 有重读次数 直接重读
             {
@@ -761,7 +913,7 @@ public class Commands
 
             Config.Write();
         }
-        else // 有权限直接重读
+        else // 有1个权限直接重读
         {
             Read(plr);
         }
@@ -823,6 +975,7 @@ public class Commands
     private static void SetError(TSPlayer plr)
     {
         plr.SendMessage($"\n请手持一个物品后再使用指令:[c/94D3E4: /mw s]", Color.AntiqueWhite);
+        plr.SendInfoMessage("建议:数值没同步自己用一下[c/94D3E4: /mw read]");
         plr.SendSuccessMessage("该指令为修改自己手持物品参数,格式为:");
         plr.SendInfoMessage("/mw s d 200 a 10 … 自定义组合");
         plr.SendMessage("[c/E4EC99:参数:] 伤害[c/FF6975:d] 大小[c/5C9EE1:c] " +
@@ -836,7 +989,8 @@ public class Commands
 
     private static void GiveError(TSPlayer plr)
     {
-        plr.SendSuccessMessage("\n该指令为给予别人指定物品参数,格式为:");
+        plr.SendInfoMessage("\n建议:[c/91DFBB:发2次,第一次会帮玩家建数据]");
+        plr.SendSuccessMessage("该指令为给予别人指定物品参数,格式为:");
         plr.SendInfoMessage("/mw g 玩家名 物品名 d 200 ua 10 …");
         plr.SendMessage("[c/E4EC99:参数:] 伤害[c/FF6975:d] 大小[c/5C9EE1:c] " +
             "击退[c/F79361:k] 用速[c/74E55D:t] 攻速[c/F7B661:a]\n" +
@@ -847,14 +1001,32 @@ public class Commands
             $"再用[c/FF6975:/mw g 玩家名 物品名 aa 1]把另1个物品设为发射器");
     }
 
-    private static void UpdateError(TSPlayer plr)
+    private static void AllError(TSPlayer plr)
     {
-        plr.SendSuccessMessage("\n该指令为修改玩家物品指定参数,格式为:");
-        plr.SendInfoMessage("/mw up 玩家名 物品名 d 200(只改1个参数)");
+        plr.SendInfoMessage("\n建议:[c/91DFBB:发2次,第一次会帮玩家建数据]");
+        plr.SendSuccessMessage("该指令为给予所有人指定物品参数,格式为:");
+        plr.SendInfoMessage("/mw all 物品名 d 200 ua 10 …");
         plr.SendMessage("[c/E4EC99:参数:] 伤害[c/FF6975:d] 大小[c/5C9EE1:c] " +
             "击退[c/F79361:k] 用速[c/74E55D:t] 攻速[c/F7B661:a]\n" +
             "弹幕[c/A3E295:h] 弹速[c/F7F261:s] 作弹药[c/91DFBB:m] " +
             "用弹药[c/5264D9:aa]", 141, 209, 214);
+
+        plr.SendInfoMessage($"弹药:先用[c/91DFBB:/mw all 物品名 m 1]指定1个物品作为弹药\n" +
+            $"再用[c/FF6975:/mw all 物品名 aa 1]把另1个物品设为发射器");
+    }
+
+    private static void UpdateError(TSPlayer plr)
+    {
+        plr.SendInfoMessage("\n在保留原有修改参数下进行二次更改");
+        plr.SendSuccessMessage("该指令为已有修改物品的玩家更正参数,格式为:");
+        plr.SendInfoMessage("/mw up 玩家名 物品名 d 200(只能改1个参数)");
+        plr.SendMessage("[c/E4EC99:参数:] 伤害[c/FF6975:d] 大小[c/5C9EE1:c] " +
+            "击退[c/F79361:k] 用速[c/74E55D:t] 攻速[c/F7B661:a]\n" +
+            "弹幕[c/A3E295:h] 弹速[c/F7F261:s] 作弹药[c/91DFBB:m] " +
+            "用弹药[c/5264D9:aa]", 141, 209, 214);
+
+        plr.SendInfoMessage($"弹药:先用[c/91DFBB:/mw up 玩家名 物品名 m 1]指定1个物品作为弹药\n" +
+            $"再用[c/FF6975:/mw up 玩家名 物品名 aa 1]把另1个物品设为发射器");
     }
     #endregion
 
@@ -893,7 +1065,8 @@ public class Commands
             "/mw del 玩家名 —— 删除指定玩家数据\n" +
             "/mw up —— 修改玩家已有物品的指定属性\n" +
             "/mw set  —— 修改自己手持物品属性\n" +
-            "/mw give —— 给玩家修改物品并建数据\n" +
+            "/mw give —— 给指定玩家修改物品并建数据\n" +
+            "/mw all —— 给所有玩家修改物品并建数据\n" +
             "/mw reads —— 切换所有人进服重读\n" +
             "/mw reset —— 重置所有玩家数据", Microsoft.Xna.Framework.Color.AntiqueWhite);
 

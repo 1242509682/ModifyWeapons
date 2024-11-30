@@ -8,6 +8,24 @@
 ## Update Log
 
 ```
+v1.2.1
+- Added the /mw all command to give a specified item to all online players and establish data.
+- When a player receives an item from an admin, they will be prompted with the exact modified values and a reminder to manually refresh.
+- Fixed the broadcast logic for the /mw read command.
+- Detailed explanation of the up sub-command:
+  The commands /mw s or g or all will first reset other values before modifying the specified values.
+  The command /mw up <player name> <item name> <property> <value> (e.g., /mw up John Sword ua 20) will retain previous values and only modify the specified value.
+- Item property parameters (can also use Chinese names):
+  Damage: d, da
+  Scale: c, sc
+  Knockback: k, kb
+  Use Time: t, ut
+  Use Animation: a, ua
+  Shoot: h, sh
+  Shoot Speed: s, ss
+  Ammo: m, am
+  Use Ammo: aa, uaa
+
 v1.2.0
 - Refactored code to support customization of multiple weapon items.
 - Removed database logic, switched to using configuration files for data storage.
@@ -64,9 +82,10 @@ v1.0.0
 | /mw open PlayerName | None |   mw.admin    |    Switch another player's login reload state    |
 | /mw add PlayerName Count | None |   mw.admin    |    Add reload counts    |
 | /mw del PlayerName | None |   mw.admin    |    Delete specified player's data    |
-| /mw up | /mw g |   mw.admin    |    Modify specific attributes of a player's existing "modified item"    |
+| /mw up | None |   mw.admin    |    Modify specific attributes of a player's existing "modified item"    |
 | /mw set | /mw s |   mw.admin    |    Modify held item attributes    |
 | /mw give | /mw g |   mw.admin    |    Give a player a modified item and create data    |
+| /mw all | None |   mw.admin    |    Give a modified item to all players and create data    |
 | /mw reads | None |   mw.admin    |    Toggle everyone's login reload state    |
 | /mw reset | None |   mw.admin    |    Reset all player data    |
 | /reload  | None |   tshock.cfg.reload    |    Reload configuration file    |
