@@ -8,6 +8,30 @@
 ## Update Log
 
 ```
+v1.2.3
+Added automatic update judgment: checks if the player is currently using an item.
+Added automatic update judgment: checks if the item has modified ammunition properties.
+Added item re-read judgment: will look for corresponding modified items in the player's inventory before updating.
+Added item color property: format is hexadecimal without the # symbol, e.g., `/mw s hc CDEEEB`.
+Offline modification logic added for `/mw all`, `g`, and `up`.
+Whether the player is online or offline: data is automatically created if none exists, otherwise updated; if online, it re-reads and directly gives the item (except for `/mw up`).
+Note: Prefixes are only updated when the player is not holding the modified item,
+If the player is online and holding the modified item, it only writes the prefix on the held item.
+To enhance the efficiency and clarity for administrators, we have optimized the /mw reads command. Now, this command offers two distinct functionalities based on the parameter provided:
+reads 1: When an administrator uses /mw reads 1, it will immediately reload the modified weapon data for all online players. This action does not affect the players' auto-reload settings.
+reads 2: Using /mw reads 2 will toggle the join auto-reload state for all players. When enabled, the system automatically checks and reloads modified weapon data whenever a player joins the server.
+
+v1.2.2
+Refactored and optimized code, improved feedback messages.
+Supports modification of prefix and item quantity.
+Added auto-reload function (beta): `/mw auto`.
+When enabled, it disables the player reload count mechanism (uses the player's own reload cooldown time).
+Triggers only when holding a modified item and damage exceeds the modified value + misjudgment value, or the item prefix does not match.
+Moved data structure from Config to tshock.sqlite storage.
+`mw.admin` permission holders can ignore reload counts.
+Fixed a bug where `mw.admin` permissions could not use certain management commands:
+It was written as `cmd.admin` but forgot to change it back.
+
 v1.2.1
 - Added the /mw all command to give a specified item to all online players and establish data.
 - When a player receives an item from an admin, they will be prompted with the exact modified values and a reminder to manually refresh.
@@ -75,19 +99,20 @@ v1.0.0
 | Syntax                             | Alias  |       Permission       |                   Description                   |
 | -------------------------------- | :---: | :--------------: | :--------------------------------------: |
 | /mw  | None |   mw.use    |    Command    |
-| /mw hand | None |   mw.use    |    Toggle switch for getting held item info    |
-| /mw join | None |   mw.use    |    Toggle switch for login reload    |
-| /mw list | None |   mw.use    |    List all modified items    |
+| /mw hand | /mw h |   mw.use    |    Toggle switch for getting held item info    |
+| /mw join | /mw j |   mw.use    |    Toggle switch for login reload    |
+| /mw list | /mw l |   mw.use    |    List all modified items    |
 | /mw read | None |   mw.use    |    Manually reload all modified items    |
-| /mw open PlayerName | None |   mw.admin    |    Switch another player's login reload state    |
+| /mw auto | /mw at |   mw.use    |    Manually reload all modified items    |
+| /mw open PlayerName | /mw op |   mw.admin    |    Switch another player's login reload state    |
 | /mw add PlayerName Count | None |   mw.admin    |    Add reload counts    |
 | /mw del PlayerName | None |   mw.admin    |    Delete specified player's data    |
 | /mw up | None |   mw.admin    |    Modify specific attributes of a player's existing "modified item"    |
 | /mw set | /mw s |   mw.admin    |    Modify held item attributes    |
 | /mw give | /mw g |   mw.admin    |    Give a player a modified item and create data    |
 | /mw all | None |   mw.admin    |    Give a modified item to all players and create data    |
-| /mw reads | None |   mw.admin    |    Toggle everyone's login reload state    |
-| /mw reset | None |   mw.admin    |    Reset all player data    |
+| /mw reads | /mw rds |   mw.admin    |    Help everyone's reload "modified item"    |
+| /mw reset | /mw rs |   mw.admin    |    Reset all player data    |
 | /reload  | None |   tshock.cfg.reload    |    Reload configuration file    |
 | None  | None |   mw.cd    |    Ignore cooldown and count for reloading weapons    |
 
