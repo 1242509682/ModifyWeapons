@@ -57,7 +57,7 @@ public class Plugin : TerrariaPlugin
     }
     #endregion
 
-
+    
     #region 进服自动创建玩家数据方法
     private void OnGreetPlayer(GreetPlayerEventArgs args)
     {

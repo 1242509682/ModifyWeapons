@@ -446,12 +446,14 @@ public class Commands
                                             {
                                                 plr2.GiveItem(item2.type, item.maxStack);
                                             }
+                                            else
+                                            {
+                                                UpdatePT(plr2.Name, item, ItemVal);
+                                                SaveItem(plr2.Name, data2, item.type, item.stack, item.prefix, item.damage, item.scale, item.knockBack, item.useTime, item.useAnimation, item.shoot, item.shootSpeed, item.ammo, item.useAmmo, item.color);
+                                                UpdataRead(plr2, data2);
+                                            }
                                         }
                                     }
-
-                                    UpdatePT(plr2.Name, item, ItemVal);
-                                    SaveItem(acc.Name, data2, item.type, item.stack, item.prefix, item.damage, item.scale, item.knockBack, item.useTime, item.useAnimation, item.shoot, item.shootSpeed, item.ammo, item.useAmmo, item.color);
-                                    UpdataRead(plr2, data2);
                                 }
                                 else
                                 {
