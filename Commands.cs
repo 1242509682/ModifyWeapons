@@ -325,7 +325,20 @@ public class Commands
                             if (plr2 != null) //在线重读并通告玩家 物品修改信息
                             {
                                 plr2.SendMessage($"\n管理员 [c/D4E443:{plr.Name}] 已发送修改物品: [c/92C5EC:{Lang.GetItemName(item.type)}]", 255, 244, 150);
-                                plr2.GiveItem(item.type, item.stack);
+
+                                if (data2.Dict.TryGetValue(plr2.Name, out var DataList))
+                                {
+                                    foreach (var item2 in DataList)
+                                    {
+                                        var hasItem = plr2.TPlayer.inventory.Take(50).Any(x => x != null && x.type == item2.type);
+
+                                        if (!hasItem)
+                                        {
+                                            plr2.GiveItem(item2.type, item.maxStack);
+                                        }
+                                    }
+                                }
+
                                 UpdatePT(plr2.Name, item, ItemVal);
                                 SaveItem(other, data2, item.type, item.stack, item.prefix, item.damage, item.scale, item.knockBack, item.useTime, item.useAnimation, item.shoot, item.shootSpeed, item.ammo, item.useAmmo, item.color);
                                 UpdataRead(plr2, data2);
@@ -422,7 +435,20 @@ public class Commands
                                 {
                                     data2.ReadCount += 2;
                                     plr2.SendMessage($"\n管理员 [c/D4E443:{plr.Name}] 已发送修改物品: [c/92C5EC:{Lang.GetItemName(item.type)}]", 255, 244, 150);
-                                    plr2.GiveItem(item.type, item.stack);
+
+                                    if (data2.Dict.TryGetValue(plr2.Name, out var DataList))
+                                    {
+                                        foreach (var item2 in DataList)
+                                        {
+                                            var hasItem = plr2.TPlayer.inventory.Take(50).Any(x => x != null && x.type == item2.type);
+
+                                            if (!hasItem)
+                                            {
+                                                plr2.GiveItem(item2.type, item.maxStack);
+                                            }
+                                        }
+                                    }
+
                                     UpdatePT(plr2.Name, item, ItemVal);
                                     SaveItem(acc.Name, data2, item.type, item.stack, item.prefix, item.damage, item.scale, item.knockBack, item.useTime, item.useAnimation, item.shoot, item.shootSpeed, item.ammo, item.useAmmo, item.color);
                                     UpdataRead(plr2, data2);
