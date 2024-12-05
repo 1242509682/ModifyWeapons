@@ -12,7 +12,7 @@ public class Plugin : TerrariaPlugin
     #region 插件信息
     public override string Name => "修改武器";
     public override string Author => "羽学";
-    public override Version Version => new Version(1, 2, 3);
+    public override Version Version => new Version(1, 2, 4);
     public override string Description => "修改玩家物品数据并自动储存重读,可使用/mw指令给予玩家指定属性的物品";
     #endregion
 
@@ -57,7 +57,7 @@ public class Plugin : TerrariaPlugin
     }
     #endregion
 
-    
+
     #region 进服自动创建玩家数据方法
     private void OnGreetPlayer(GreetPlayerEventArgs args)
     {
@@ -129,24 +129,9 @@ public class Plugin : TerrariaPlugin
             {
                 if (datas.Process == 0)
                 {
-                    if (Sel.type != data.type || !tplr.controlUseItem)
+                    if (Sel.type != data.type && !tplr.controlUseItem)
                     {
                         continue;
-                    }
-
-                    for (int i = 0; i < Main.item.Length; i++)
-                    {
-                        var item = Main.item[i];
-                        if (item.damage == Sel.damage && Sel.damage > data.damage + Config.DamageRate)
-                        {
-                            plr.SendMessage($"《[c/AD89D5:修][c/D68ACA:改][c/DF909A:武][c/E5A894:器]》触发自动更新![c/4C95DD:请勿乱动!]", 255, 244, 155);
-                            plr.SendMessage($"《[c/FCFE63:伤害转换]》[c/15EDDB:{Lang.GetItemName(Sel.type)}] " +
-                                $"[c/FF6863:{Sel.damage}] => [c/8AD0EA:{data.damage}]", 255, 244, 155);
-
-                            datas.Process = 1;
-                            DB.UpdateData(datas);
-                            break;
-                        }
                     }
 
                     if (Sel.ammo != data.ammo)

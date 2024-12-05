@@ -8,6 +8,12 @@
 ## Update Log
 
 ```
+v1.2.4
+Optimized broadcast and message sending phrases, added instructions for modifying parameters.
+Removed the automatic update damage detection logic (had bugs).
+Fixed a bug where the /mw all command would repeatedly give items to players who already had them.
+Added functionality for /mw read to display the names and quantities of items reloaded onto the player.
+
 v1.2.3
 Added automatic update judgment: checks if the player is currently using an item.
 Added automatic update judgment: checks if the item has modified ammunition properties.
@@ -120,37 +126,12 @@ v1.0.0
 > Configuration file location：tshock/修改武器.json
 ```json
 {
-  "PluginEnabled": true,
-  "InitialReloadCount": 2,
-  "AdminOnlyDataCreationOnJoin": true,
-  "CooldownSecondsForReloadIncrement": 1800.0,
-  "PlayerData": [
-    {
-      "PlayerName": "Yuxue",
-      "ReloadCount": 2,
-      "GetHeldItemInfo": true,
-      "LoginReloadSwitch": true,
-      "LastReloadCooldownTimestamp": "2024-11-29T21:38:42.1398775Z"
-    }
-  ],
-  "ModifiedItemData": {
-    "Yuxue": [
-      {
-        "ItemId": 4952,
-        "Stack": 1,
-        "Prefix": 0,
-        "Damage": 100,
-        "Size": 0.7,
-        "Knockback": 2.5,
-        "UseTime": 2,
-        "AttackSpeed": 36,
-        "ProjectileId": 931,
-        "ProjectileSpeed": 17.0,
-        "AmmoType": 0,
-        "UsesAmmo": 0
-      }
-    ]
-  }
+  "Plugin Enabled": true,
+  "Initial Reload Count": 2,
+  "Automatic Reload": 0,
+  "Automatic Reload Cooldown Seconds": 5,
+  "Create Data for Admins Only on Login": false,
+  "Cooldown Seconds to Increase Reload Count": 1800.0
 }
 ```
 ## FeedBack

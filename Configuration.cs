@@ -13,11 +13,9 @@ namespace ModifyWeapons
         public int ReadCount { get; set; } = 2;
 
         [JsonProperty("自动重读", Order = 2)]
-        public int Auto { get; set; } = 1;
+        public int Auto { get; set; } = 0;
         [JsonProperty("自动重读冷却秒数", Order = 2)]
         public int AutoTimer { get; set; } = 5;
-        [JsonProperty("伤害误判修正阈值", Order = 3)]
-        public int DamageRate { get; set; } = 10;
 
         [JsonProperty("进服只给管理建数据", Order = 10)]
         public bool Enabled2 { get; set; } = false;

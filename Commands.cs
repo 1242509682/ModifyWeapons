@@ -1,9 +1,11 @@
-﻿using System.Data;
+﻿using System;
+using System.Data;
 using System.Text;
 using Microsoft.Xna.Framework;
 using Terraria;
 using TShockAPI;
 using TShockAPI.DB;
+using static ModifyWeapons.Database.PlayerData;
 using static ModifyWeapons.Plugin;
 using static MonoMod.InlineRT.MonoModRule;
 
@@ -133,7 +135,7 @@ public class Commands
                                     if (plr2 != null && data2 != null) // 如果目标玩家在线，则发送消息并直接重读数值
                                     {
                                         data2.ReadCount += 2;
-                                        plr2.SendMessage($"\n管理员 [c/D4E443:{plr.Name}] 已为所有玩家[c/92C5EC:手动重读]修改物品", 255, 244, 150);
+                                        plr2.SendMessage($"\n管理员 [c/D4E443:{plr.Name}] 已为所有玩家[c/92C5EC:手动重读]修改物品", 0, 196, 177);
                                         UpdataRead(plr2, data2);
                                     }
                                 }
@@ -185,10 +187,9 @@ public class Commands
                                 $"[c/FFFAA1:手持修改物品时]触发重读条件:\n" +
                                 $"0.冷却秒数 [c/FFB357:{Config.AutoTimer}秒]\n" +
                                 $"1.正在使用 [c/4C95DD:修改的物品]\n" +
-                                $"2.伤害超过 [c/FFB357:修改值] + [c/FF6863:误判值 {Config.DamageRate}] (概率测不出)\n" +
-                                $"3.词缀数据 [c/4C95DD:不等于] [c/86F06E:手上词缀]\n" +
-                                $"4.作为弹药 [c/FFB357:物品] [c/86F06E:直接使用]\n" +
-                                $"5.指令格式 [c/FFF540:/mw auto 1 或 0]", 100, 210, 190);
+                                $"2.词缀数据 [c/4C95DD:不等于] [c/86F06E:手上词缀]\n" +
+                                $"3.作为弹药 [c/FFB357:物品] [c/86F06E:直接使用]\n" +
+                                $"4.指令格式 [c/FFF540:/mw auto 1 或 0]", 100, 210, 190);
                         }
                     }
                     return;
@@ -217,282 +218,342 @@ public class Commands
 
                 case "set":
                 case "s":
-                    if (args.Parameters.Count >= 3 && plr.HasPermission("mw.admin"))
+                    if (plr.HasPermission("mw.admin"))
                     {
-                        var Sel = plr.SelectedItem;
-                        Dictionary<string, string> ItemVal = new Dictionary<string, string>();
-                        Parse(args.Parameters, out ItemVal, 1);
-                        UpdatePT(plr.Name, Sel, ItemVal);
-                        SetItem(plr, data, Sel.damage, Sel.stack, Sel.prefix, Sel.scale, Sel.knockBack, Sel.useTime, Sel.useAnimation, Sel.shoot, Sel.shootSpeed, Sel.ammo, Sel.useAmmo, Sel.color);
-                    }
-                    else
-                    {
-                        SetError(plr);
+                        if (args.Parameters.Count >= 3)
+                        {
+                            var Sel = plr.SelectedItem;
+                            Dictionary<string, string> ItemVal = new Dictionary<string, string>();
+                            Parse(args.Parameters, out ItemVal, 1);
+                            UpdatePT(plr.Name, Sel, ItemVal);
+                            SetItem(plr, data, Sel.damage, Sel.stack, Sel.prefix, Sel.scale, Sel.knockBack, Sel.useTime, Sel.useAnimation, Sel.shoot, Sel.shootSpeed, Sel.ammo, Sel.useAmmo, Sel.color);
+                        }
+                        else
+                        {
+                            SetError(plr);
+                        }
                     }
                     break;
 
                 case "up":
                 case "update":
-                    if (args.Parameters.Count >= 3 && plr.HasPermission("mw.admin"))
+                    if (plr.HasPermission("mw.admin"))
                     {
-                        var other = args.Parameters[1]; // 玩家名称
-                        var items = args.Parameters[2];
-                        var Items = TShock.Utils.GetItemByIdOrName(items);
-                        if (Items.Count > 1)
+                        if (args.Parameters.Count >= 3)
                         {
-                            args.Player.SendMultipleMatchError(Items.Select(i => i.Name));
-                            return;
-                        }
-                        var item = Items[0];
-                        var acc = TShock.UserAccounts.GetUserAccountByName(other);
-                        Dictionary<string, string> ItemVal = new Dictionary<string, string>();
-                        Parse(args.Parameters, out ItemVal, 3);
-
-                        if (UpdateItem(acc.Name, item.type, ItemVal)) // 更新玩家的指定物品属性
-                        {
-                            var datas = DB.GetData(other);
-                            if (datas.Dict.TryGetValue(acc.Name, out var DataList))
+                            var other = args.Parameters[1]; // 玩家名称
+                            var items = args.Parameters[2];
+                            var Items = TShock.Utils.GetItemByIdOrName(items);
+                            if (Items.Count > 1)
                             {
-                                foreach (var data2 in DataList)
+                                args.Player.SendMultipleMatchError(Items.Select(i => i.Name));
+                                return;
+                            }
+                            var item = Items[0];
+                            var acc = TShock.UserAccounts.GetUserAccountByName(other);
+                            Dictionary<string, string> ItemVal = new Dictionary<string, string>();
+                            Parse(args.Parameters, out ItemVal, 3);
+
+                            if (UpdateItem(acc.Name, item.type, ItemVal)) // 更新玩家的指定物品属性
+                            {
+                                // 播报给执行者
+                                var datas = DB.GetData(acc.Name);
+                                if (datas.Dict.TryGetValue(acc.Name, out var dataList))
                                 {
-                                    var mess = new StringBuilder();
-                                    var pr = TShock.Utils.GetPrefixById(data2.prefix);
-                                    if (string.IsNullOrEmpty(pr))
+                                    foreach (var data2 in dataList.Where(d => d.type == item.type))
                                     {
-                                        pr = "无";
-                                    }
+                                        var diffs = CompareItem(data2, item.type, item.stack, item.prefix, item.damage, item.scale, item.knockBack,
+                                            item.useTime, item.useAnimation, item.shoot, item.shootSpeed, item.ammo, item.useAmmo, item.color);
 
-                                    string ColorToHex(Color color)
-                                    {
-                                        return $"{color.R:X2}{color.G:X2}{color.B:X2}";
-                                    }
+                                        if (diffs.Count > 0) // 只有在有差异的情况下才构建和发送消息
+                                        {
+                                            var mess = new StringBuilder();
+                                            mess.Append($"已更新玩家 [c/2F99D7:{acc.Name}] 的[c/92B9D4:{Lang.GetItemName(data2.type)}]");
 
-                                    mess.AppendFormat("已更新物品给玩家 [{0}]\n" +
-                                        "物品:[c/92C5EC:{1}] 伤害[c/FF6975:{2}] 前缀[c/F5DDD3:{3}] 数量[c/2CCFC6:{4}]\n" +
-                                        "大小[c/5C9EE1:{5}] 击退[c/5C9EE1:{6}] 用速[c/74E55D:{7}] 攻速[c/94BAE0:{8}]\n" +
-                                        "弹幕[c/A3E295:{9}] 弹速[c/F0EC9E:{10}] 作弹药[c/91DFBB:{11}] 发射器[c/5264D9:{12}] 颜色[c/F5DDD3:{13}]\n",
-                                        other, Lang.GetItemName(data2.type), data2.damage, pr, data2.stack,
-                                        data2.scale, data2.knockBack, data2.useTime, data2.useAnimation, data2.shoot, data2.shootSpeed, data2.ammo, data2.useAmmo, ColorToHex(data2.color));
-                                    plr.SendMessage(mess.ToString(), 255, 244, 150);
+                                            foreach (var diff in diffs)
+                                            {
+                                                mess.Append($" {diff.Key}{diff.Value}");
+                                            }
+
+                                            plr.SendMessage($"{mess}", 216, 223, 153);
+                                        }
+                                    }
                                 }
                             }
                         }
-                    }
-                    else
-                    {
-                        UpdateError(plr);
+                        else
+                        {
+                            UpdateError(plr);
+                        }
                     }
                     return;
 
                 case "g":
                 case "give":
-                    if (args.Parameters.Count >= 4 && plr.HasPermission("mw.admin"))
+                    if (plr.HasPermission("mw.admin"))
                     {
-                        var other = args.Parameters[1];
-                        var items = args.Parameters[2];
-                        var Items = TShock.Utils.GetItemByIdOrName(items);
-
-                        if (Items.Count > 1)
+                        if (args.Parameters.Count >= 4)
                         {
-                            args.Player.SendMultipleMatchError(Items.Select(i => i.Name));
-                            return;
-                        }
-                        var item = Items[0];
-                        item.SetDefaults(item.type);
-                        Dictionary<string, string> ItemVal = new Dictionary<string, string>();
-                        Parse(args.Parameters, out ItemVal, 3);
+                            var other = args.Parameters[1];
+                            var items = args.Parameters[2];
+                            var Items = TShock.Utils.GetItemByIdOrName(items);
 
-                        var data2 = DB.GetData(other);
-                        if (data2 == null)
-                        {
-                            var newData = new Database.PlayerData
+                            if (Items.Count > 1)
                             {
-                                Name = other,
-                                Hand = true,
-                                Join = true,
-                                ReadCount = Config.ReadCount,
-                                Process = 0,
-                                ReadTime = DateTime.UtcNow,
-                                Dict = new Dictionary<string, List<Database.PlayerData.ItemData>>()
-                            };
-                            DB.AddData(newData);
-                            plr.SendMessage($"管理员 [c/D4E443:{plr.Name}] 已为 [c/92C5EC:{other}] 创建数据", 255, 244, 150);
-                        }
-                        else
-                        {
-                            data2.ReadCount += 2;
-                            var plr2 = TShock.Players.FirstOrDefault(p => p != null && p.IsLoggedIn && p.Active && p.Name == other);
-                            if (plr2 != null) //在线重读并通告玩家 物品修改信息
-                            {
-                                plr2.SendMessage($"\n管理员 [c/D4E443:{plr.Name}] 已发送修改物品: [c/92C5EC:{Lang.GetItemName(item.type)}]", 255, 244, 150);
-
-                                if (data2.Dict.TryGetValue(plr2.Name, out var DataList))
-                                {
-                                    foreach (var item2 in DataList)
-                                    {
-                                        var hasItem = plr2.TPlayer.inventory.Take(50).Any(x => x != null && x.type == item2.type);
-
-                                        if (!hasItem)
-                                        {
-                                            plr2.GiveItem(item2.type, item.maxStack);
-                                        }
-                                    }
-                                }
-
-                                UpdatePT(plr2.Name, item, ItemVal);
-                                SaveItem(other, data2, item.type, item.stack, item.prefix, item.damage, item.scale, item.knockBack, item.useTime, item.useAnimation, item.shoot, item.shootSpeed, item.ammo, item.useAmmo, item.color);
-                                UpdataRead(plr2, data2);
+                                args.Player.SendMultipleMatchError(Items.Select(i => i.Name));
+                                return;
                             }
-                            else //不在线 保存
-                            {
-                                UpdatePT(other, item, ItemVal);
-                                SaveItem(other, data2, item.type, item.stack, item.prefix, item.damage, item.scale, item.knockBack, item.useTime, item.useAnimation, item.shoot, item.shootSpeed, item.ammo, item.useAmmo, item.color);
-                            }
+                            var item = Items[0];
+                            item.SetDefaults(item.type);
+                            Dictionary<string, string> ItemVal = new Dictionary<string, string>();
+                            Parse(args.Parameters, out ItemVal, 3);
 
-                            // 播报给执行者
-                            var mess = new StringBuilder();
-                            var pr = TShock.Utils.GetPrefixById(item.prefix);
-                            if (string.IsNullOrEmpty(pr))
-                            {
-                                pr = "无";
-                            }
-
-                            string ColorToHex(Color color)
-                            {
-                                return $"{color.R:X2}{color.G:X2}{color.B:X2}";
-                            }
-
-                            mess.AppendFormat("已发送物品给玩家 [{0}]\n" +
-                                "物品[c/92C5EC:{1}] 伤害[c/FF6975:{2}] 前缀[c/F5DDD3:{3}] 数量[c/2CCFC6:{4}]\n" +
-                                "大小[c/5C9EE1:{5}] 击退[c/5C9EE1:{6}] 用速[c/74E55D:{7}] 攻速[c/94BAE0:{8}]\n" +
-                                "弹幕[c/A3E295:{9}] 弹速[c/F0EC9E:{10}] 作弹药[c/91DFBB:{11}] 发射器[c/5264D9:{12}] 颜色[c/F5DDD3:{13}]\n",
-                                other, Lang.GetItemName(item.type), item.damage, pr, item.stack,
-                                item.scale, item.knockBack, item.useTime, item.useAnimation, item.shoot, item.shootSpeed, item.ammo, item.useAmmo, ColorToHex(item.color));
-                            plr.SendMessage(mess.ToString(), 255, 244, 150);
-                        }
-                    }
-                    else
-                    {
-                        GiveError(plr);
-                    }
-                    break;
-
-                case "all":
-                    if (args.Parameters.Count >= 2 && plr.HasPermission("mw.admin"))
-                    {
-                        var items = args.Parameters[1];
-                        var Items = TShock.Utils.GetItemByIdOrName(items);
-
-                        if (Items.Count > 1)
-                        {
-                            args.Player.SendMultipleMatchError(Items.Select(i => i.Name));
-                            return;
-                        }
-
-                        var item = Items[0];
-                        item.SetDefaults(item.type);
-
-                        Dictionary<string, string> ItemVal = new Dictionary<string, string>();
-                        Parse(args.Parameters, out ItemVal, 2);
-
-                        var flag = false;
-                        var Creat = false;
-                        var name = new HashSet<string>();
-                        var mess = new StringBuilder();
-                        mess.Append($"已修改的玩家名单:");
-
-                        var user = TShock.UserAccounts.GetUserAccounts();
-                        foreach (var acc in user)
-                        {
-                            var data2 = DB.GetData(acc.Name);
-                            if (data2 == null)
+                            var datas = DB.GetData(other);
+                            if (datas == null)
                             {
                                 var newData = new Database.PlayerData
                                 {
-                                    Name = acc.Name,
+                                    Name = other,
                                     Hand = true,
                                     Join = true,
-                                    Process = 0,
                                     ReadCount = Config.ReadCount,
+                                    Process = 0,
                                     ReadTime = DateTime.UtcNow,
                                     Dict = new Dictionary<string, List<Database.PlayerData.ItemData>>()
                                 };
                                 DB.AddData(newData);
-
-                                if (!Creat) // 检查是否已经发送过消息
-                                {
-                                    plr.SendMessage($"管理员 [c/D4E443:{plr.Name}] 已为所有玩家 创建数据", 255, 244, 150);
-                                    Creat = true;
-                                }
+                                plr.SendMessage($"管理员 [c/D4E443:{plr.Name}] 已为 [c/92C5EC:{other}] 创建数据", 0, 196, 177);
                             }
                             else
                             {
-                                flag = true;
-
-                                name.Add(acc.Name);
-                                var plr2 = TShock.Players.FirstOrDefault(p => p != null && p.IsLoggedIn && p.Active && p.Name == acc.Name);
-                                if (plr2 != null)// 如果目标玩家在线，则发送消息并直接重读数值
+                                datas.ReadCount += 2;
+                                var plr2 = TShock.Players.FirstOrDefault(p => p != null && p.IsLoggedIn && p.Active && p.Name == other);
+                                if (plr2 != null) //在线重读并通告玩家 物品修改信息
                                 {
-                                    data2.ReadCount += 2;
-                                    plr2.SendMessage($"\n管理员 [c/D4E443:{plr.Name}] 已发送修改物品: [c/92C5EC:{Lang.GetItemName(item.type)}]", 255, 244, 150);
+                                    plr2.SendMessage($"\n管理员 [c/D4E443:{plr.Name}] 已发送修改物品: [c/92C5EC:{Lang.GetItemName(item.type)}]", 0, 196, 177);
 
-                                    if (data2.Dict.TryGetValue(plr2.Name, out var DataList))
+                                    if (datas.Dict.TryGetValue(other, out var DataList))
                                     {
                                         foreach (var item2 in DataList)
                                         {
-                                            var hasItem = plr2.TPlayer.inventory.Take(50).Any(x => x != null && x.type == item2.type);
+                                            var hasItem = plr2.TPlayer.inventory.Take(58).Any(x => x != null && x.type == item2.type);
 
                                             if (!hasItem)
                                             {
                                                 plr2.GiveItem(item2.type, item.maxStack);
                                             }
-                                            else
-                                            {
-                                                UpdatePT(plr2.Name, item, ItemVal);
-                                                SaveItem(plr2.Name, data2, item.type, item.stack, item.prefix, item.damage, item.scale, item.knockBack, item.useTime, item.useAnimation, item.shoot, item.shootSpeed, item.ammo, item.useAmmo, item.color);
-                                                UpdataRead(plr2, data2);
-                                            }
                                         }
+                                    }
+
+                                    UpdatePT(plr2.Name, item, ItemVal);
+                                    SaveItem(other, datas, item.type, item.stack, item.prefix, item.damage, item.scale, item.knockBack, item.useTime, item.useAnimation, item.shoot, item.shootSpeed, item.ammo, item.useAmmo, item.color);
+                                    UpdataRead(plr2, datas);
+                                }
+                                else //不在线 保存
+                                {
+                                    UpdatePT(other, item, ItemVal);
+                                    SaveItem(other, datas, item.type, item.stack, item.prefix, item.damage, item.scale, item.knockBack, item.useTime, item.useAnimation, item.shoot, item.shootSpeed, item.ammo, item.useAmmo, item.color);
+                                }
+
+                                // 播报给执行者
+                                if (datas.Dict.TryGetValue(other, out var dataList))
+                                {
+                                    foreach (var data2 in dataList.Where(d => d.type == item.type))
+                                    {
+                                        var item2 = new Item();
+                                        var diffs = CompareItem(data2, item2.type, item2.stack, item2.prefix, item2.damage, item2.scale, item2.knockBack,
+                                            item2.useTime, item2.useAnimation, item2.shoot, item2.shootSpeed, item2.ammo, item2.useAmmo, item2.color);
+
+                                        if (diffs.Count > 0) // 只有在有差异的情况下才构建和发送消息
+                                        {
+                                            var mess = new StringBuilder();
+                                            mess.Append($"已为玩家 [c/2F99D7:{other}] 发送:");
+
+                                            foreach (var diff in diffs)
+                                            {
+                                                mess.Append($" {diff.Key}{diff.Value}");
+                                            }
+
+                                            plr.SendMessage($"{mess}", 216, 223, 153);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            GiveError(plr);
+                        }
+                    }
+                    break;
+
+                case "all":
+                    if (plr.HasPermission("mw.admin"))
+                    {
+                        if (args.Parameters.Count >= 2)
+                        {
+                            var items = args.Parameters[1];
+                            var Items = TShock.Utils.GetItemByIdOrName(items);
+
+                            if (Items.Count > 1)
+                            {
+                                args.Player.SendMultipleMatchError(Items.Select(i => i.Name));
+                                return;
+                            }
+
+                            var item = Items[0];
+                            item.SetDefaults(item.type);
+
+                            Dictionary<string, string> ItemVal = new Dictionary<string, string>();
+                            Parse(args.Parameters, out ItemVal, 2);
+
+                            var flag = false;
+                            var Creat = false;
+                            var name = new HashSet<string>();
+                            var mess = new StringBuilder();
+                            var user = TShock.UserAccounts.GetUserAccounts();
+                            foreach (var acc in user)
+                            {
+                                var datas = DB.GetData(acc.Name);
+                                if (datas == null)
+                                {
+                                    var newData = new Database.PlayerData
+                                    {
+                                        Name = acc.Name,
+                                        Hand = true,
+                                        Join = true,
+                                        Process = 0,
+                                        ReadCount = Config.ReadCount,
+                                        ReadTime = DateTime.UtcNow,
+                                        Dict = new Dictionary<string, List<Database.PlayerData.ItemData>>()
+                                    };
+                                    DB.AddData(newData);
+
+                                    if (!Creat) // 检查是否已经发送过消息
+                                    {
+                                        plr.SendMessage($"管理员 [c/D4E443:{plr.Name}] 已为所有玩家 创建数据", 0, 196, 177);
+                                        Creat = true;
                                     }
                                 }
                                 else
                                 {
-                                    UpdatePT(acc.Name, item, ItemVal);
-                                    SaveItem(acc.Name, data2, item.type, item.stack, item.prefix, item.damage, item.scale, item.knockBack, item.useTime, item.useAnimation, item.shoot, item.shootSpeed, item.ammo, item.useAmmo, item.color);
+                                    flag = true;
+                                    name.Add(acc.Name);
+                                    var plr2 = TShock.Players.FirstOrDefault(p => p != null && p.IsLoggedIn && p.Active && p.Name == acc.Name);
+                                    if (plr2 != null)// 如果目标玩家在线，则发送消息并直接重读数值
+                                    {
+                                        datas.ReadCount += 2;
+                                        plr2.SendMessage($"\n管理员 [c/D4E443:{plr.Name}] 已发送修改物品: [c/92C5EC:{Lang.GetItemName(item.type)}]", 0, 196, 177);
+
+                                        if (datas.Dict.TryGetValue(plr2.Name, out var DataList))
+                                        {
+                                            foreach (var item2 in DataList)
+                                            {
+                                                var hasItem = plr2.TPlayer.inventory.Take(50).Any(x => x != null && x.type == item2.type);
+
+                                                if (!hasItem)
+                                                {
+                                                    plr2.GiveItem(item2.type, item.maxStack);
+                                                }
+                                            }
+                                        }
+
+                                        UpdatePT(plr2.Name, item, ItemVal);
+                                        SaveItem(plr2.Name, datas, item.type, item.stack, item.prefix, item.damage, item.scale, item.knockBack, item.useTime, item.useAnimation, item.shoot, item.shootSpeed, item.ammo, item.useAmmo, item.color);
+                                        UpdataRead(plr2, datas);
+                                    }
+                                    else
+                                    {
+                                        UpdatePT(acc.Name, item, ItemVal);
+                                        SaveItem(acc.Name, datas, item.type, item.stack, item.prefix, item.damage, item.scale, item.knockBack, item.useTime, item.useAnimation, item.shoot, item.shootSpeed, item.ammo, item.useAmmo, item.color);
+                                    }
+                                }
+                            }
+
+                            if (name.Count > 0)
+                            {
+                                mess.Append($"\n《已修改物品名单》:\n");
+
+                                if (flag) // 播报给执行者
+                                {
+                                    var index = 1;
+                                    bool flag2 = false;
+                                    var itemDiffs = new List<string>(); // 用于收集所有差异信息
+                                    const int plrLine = 4; // 每行玩家数
+                                    const int maxMessage = 20; // 每条消息最多玩家数
+
+                                    foreach (var other in name)
+                                    {
+                                        var datas = DB.GetData(other);
+                                        if (datas.Dict.TryGetValue(other, out var dataList))
+                                        {
+                                            foreach (var data2 in dataList.Where(d => d.type == item.type))
+                                            {
+                                                var item2 = new Item();
+                                                var diffs = CompareItem(data2, item2.type, item2.stack, item2.prefix, item2.damage, item2.scale, item2.knockBack,
+                                                    item2.useTime, item2.useAnimation, item2.shoot, item2.shootSpeed, item2.ammo, item2.useAmmo, item2.color);
+
+                                                if (diffs.Count > 0 && !flag2)
+                                                {
+                                                    flag2 = true;
+
+                                                    // 收集所有差异信息，假设这些差异对于所有玩家是相同的
+                                                    foreach (var diff in diffs)
+                                                    {
+                                                        itemDiffs.Add($"{diff.Key}[c/E83C10:{diff.Value}]");
+                                                    }
+                                                }
+
+                                                if (diffs.Count > 0)
+                                                {
+                                                    // 构建玩家列表，并每4个玩家换行
+                                                    mess.Append($"[{index}][c/2F99D7:{other}]");
+                                                    if (index % plrLine == 0 || index % maxMessage == 0)
+                                                    {
+                                                        mess.AppendLine(); // 换行或结束当前消息块
+                                                    }
+                                                    else
+                                                    {
+                                                        mess.Append(" "); // 同一行内的玩家之间加空格
+                                                    }
+
+                                                    // 如果达到最大玩家数，则发送当前消息并重置StringBuilder
+                                                    if (index % maxMessage == 0)
+                                                    {
+                                                        plr.SendMessage(mess.ToString(), 216, 223, 153); // 发送当前消息块
+                                                        mess.Clear();
+                                                        mess.Append($"《下一批修改物品名单》:\n"); // 继续名单
+                                                    }
+                                                    index++;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if (flag2)
+                                    {
+                                        // 只在最后添加一次物品变化信息
+                                        var itemInfo = string.Join(" ", itemDiffs);
+                                        if (mess.Length > 0 && ((index - 1) % plrLine != 0)) // 如果最后一行不满4人，则添加换行
+                                        {
+                                            mess.AppendLine();
+                                        }
+                                        mess.AppendLine($"{itemInfo}");
+
+                                        // 发送剩余的消息（如果有）
+                                        if (mess.Length > 0)
+                                        {
+                                            mess.AppendFormat($" - 共计[C/91DFBB:{name.Count}个]玩家 -");
+                                            plr.SendMessage($"{mess}\n", 216, 223, 153); // 发送最终消息
+                                        }
+                                    }
                                 }
                             }
                         }
-
-                        if (name.Count > 0)
+                        else
                         {
-                            mess.Append(string.Join(" ", name)); // 只需执行一次
+                            AllError(plr);
                         }
-
-                        if (flag) // 播报给执行者
-                        {
-                            var pr = TShock.Utils.GetPrefixById(item.prefix);
-                            if (string.IsNullOrEmpty(pr))
-                            {
-                                pr = "无";
-                            }
-
-                            string ColorToHex(Color color)
-                            {
-                                return $"{color.R:X2}{color.G:X2}{color.B:X2}";
-                            }
-
-                            mess.AppendFormat($"\n以上[C/91DFBB:{name.Count}个]玩家参数:\n");
-                            mess.AppendFormat("[c/92C5EC:{0}] 伤害[c/FF6975:{1}] 前缀[c/F5DDD3:{2}] 数量[c/2CCFC6:{3}]\n" +
-                                "大小[c/5C9EE1:{4}] 击退[c/5C9EE1:{5}] 用速[c/74E55D:{6}] 攻速[c/94BAE0:{7}]\n" +
-                                "弹幕[c/A3E295:{8}] 弹速[c/F0EC9E:{9}] 作弹药[c/91DFBB:{10}] 发射器[c/5264D9:{11}] 颜色[c/F5DDD3:{12}]\n",
-                                Lang.GetItemName(item.type), item.damage, pr, item.stack,
-                                item.scale, item.knockBack, item.useTime, item.useAnimation, item.shoot, item.shootSpeed, item.ammo, item.useAmmo, ColorToHex(item.color));
-                            plr.SendMessage(mess.ToString(), 255, 244, 150);
-                        }
-                    }
-                    else
-                    {
-                        AllError(plr);
                     }
                     break;
                 default:
@@ -618,9 +679,11 @@ public class Commands
     #region 重读物品数据方法
     internal static void ReloadItem(TSPlayer plr, Database.PlayerData datas)
     {
-        var count = 0;
         if (datas.Dict.TryGetValue(plr.Name, out var DataList))
         {
+            // 记录成功重读的物品类型
+            List<int> ReItem = new List<int>();
+
             foreach (var data in DataList)
             {
                 var item = TShock.Utils.GetItemById(data.type);
@@ -644,7 +707,6 @@ public class Commands
                     {
                         find = true;
                         slot = i;
-                        count++;
                     }
 
                     if (find)
@@ -659,19 +721,18 @@ public class Commands
                         plr.SendData(PacketTypes.UpdateItemDrop, null, MyItem);
                         plr.SendData(PacketTypes.ItemOwner, null, MyItem);
                         plr.SendData(PacketTypes.TweakItem, null, MyItem, 255f, 63f);
+                        ReItem.Add(item.type); // 记录成功重载的物品类型
                     }
                 }
             }
 
-            if (count < 1)
+            if (ReItem.Count < 1)
             {
-                ShowReadItem(plr);
                 plr.SendInfoMessage("您身上没有任何修改物品");
             }
             else
             {
-                ShowReadItem(plr);
-                plr.SendInfoMessage($"已成功重读身上{count}个修改物品");
+                ShowReadItem(plr, ReItem);
             }
         }
     }
@@ -751,9 +812,8 @@ public class Commands
     private static void UpdatePT(string name, Item item, Dictionary<string, string> itemValues)
     {
         var mess = new StringBuilder();
-        mess.AppendFormat("数值不对手动重读:[c/94D3E4:/mw read]");
-        mess.Append($"\n查看详细数值输入:[c/92D4B7:/mw]");
-        mess.Append($"\n当前修改物品数值:\n");
+        mess.AppendFormat("数值不对手动重读:[c/94D3E4:/mw read]\n");
+        mess.Append($"修改数值:");
         foreach (var kvp in itemValues)
         {
             string propName;
@@ -807,12 +867,14 @@ public class Commands
                     break;
                 case "s":
                 case "ss":
+                case "射速":
                 case "弹速":
                     if (float.TryParse(kvp.Value, out float ss)) item.shootSpeed = ss;
-                    propName = "弹速";
+                    propName = "射速";
                     break;
                 case "m":
                 case "am":
+                case "弹药":
                 case "作弹药":
                 case "作为弹药":
                     if (int.TryParse(kvp.Value, out int am)) item.ammo = am;
@@ -863,9 +925,8 @@ public class Commands
     public static bool UpdateItem(string name, int id, Dictionary<string, string> itemValues)
     {
         var mess = new StringBuilder();
-        mess.AppendFormat("数值不对手动重读:[c/94D3E4:/mw read]");
-        mess.Append($"\n查看详细数值输入:[c/92D4B7:/mw]");
-        mess.Append($"\n当前修改物品数值:\n");
+        mess.AppendFormat("数值不对手动重读:[c/94D3E4:/mw read]\n");
+        mess.Append($"修改数值:");
 
         var datas = DB.GetData(name);
         if (datas.Dict.ContainsKey(name))
@@ -928,12 +989,14 @@ public class Commands
                             break;
                         case "s":
                         case "ss":
+                        case "射速":
                         case "弹速":
                             if (float.TryParse(kvp.Value, out float ss)) item.shootSpeed = ss;
-                            propName = "弹速";
+                            propName = "射速";
                             break;
                         case "m":
                         case "am":
+                        case "弹药":
                         case "作弹药":
                         case "作为弹药":
                             if (int.TryParse(kvp.Value, out int am)) item.ammo = am;
@@ -978,7 +1041,7 @@ public class Commands
                 var plr = TShock.Players.FirstOrDefault(p => p != null && p.IsLoggedIn && p.Active && p.Name == name);
                 if (plr != null)
                 {
-                    plr.SendMessage($"管理员 [c/D4E443:{plr.Name}] 已修改你的: [c/92C5EC:{Lang.GetItemName(item.type)}]", 255, 244, 150);
+                    plr.SendMessage($"[c/D4E443:管理员] 已修改你的: [c/92C5EC:{Lang.GetItemName(item.type)}]", 0, 196, 177);
                     plr.SendMessage(mess.ToString(), 255, 244, 150);
                     SaveItem(name, datas, item.type, item.stack, item.prefix, item.damage, item.scale, item.knockBack, item.useTime, item.useAnimation, item.shoot, item.shootSpeed, item.ammo, item.useAmmo, item.color);
                     UpdataRead(plr, datas); //在线 给重读
@@ -998,14 +1061,6 @@ public class Commands
     private static void SaveItem(string name, Database.PlayerData data, int type, int stack, byte prefix, int damage, float scale, float knockBack, int useTime,
         int useAnimation, int shoot, float shootSpeed, int ammo, int useAmmo, Color color)
     {
-        var mess = new StringBuilder();
-        mess.Append($"保存玩家物品数据:{name} {Lang.GetItemNameValue(type)}");
-
-        if (string.IsNullOrEmpty(name))
-        {
-            mess.Append($"{name}不能为空或 null\n");
-        }
-
         if (!data.Dict.ContainsKey(name))
         {
             data.Dict[name] = new List<Database.PlayerData.ItemData>();
@@ -1032,31 +1087,24 @@ public class Commands
             item.useAmmo = useAmmo;
             item.color = color;
         }
-
-        TShock.Log.ConsoleInfo($"{mess}", 80, 230, 200);
         DB.UpdateData(data);
     }
     #endregion
 
     #region 重读时显示修改物品数量
-    private static void ShowReadItem(TSPlayer plr)
+    private static void ShowReadItem(TSPlayer plr, List<int> ReItem)
     {
-        var data = DB.GetData(plr.Name);
-        var items = data.Dict.FirstOrDefault(p => p.Key == data.Name).Value;
-
-        if (items == null || !items.Any())
-        {
-            plr.SendErrorMessage("您没有修改过的物品。");
-            return;
-        }
-
         // 构建消息
         var mess = new StringBuilder();
         var WNames = new HashSet<string>();
 
-        foreach (var item in items)
+        // 添加重载的物品到集合中
+        if (ReItem != null && ReItem.Any())
         {
-            WNames.Add(Lang.GetItemName(item.type).ToString());
+            foreach (var itemType in ReItem)
+            {
+                WNames.Add(Lang.GetItemName(itemType).ToString());
+            }
         }
 
         if (WNames.Count > 0)
@@ -1065,20 +1113,18 @@ public class Commands
             var color = WNames.Select(name =>
             {
                 // 生成较亮的随机颜色
-                Random random = new Random();
+                var random = new Random();
                 int r = random.Next(128, 256); // 生成128到255之间的随机数
                 int g = random.Next(128, 256);
                 int b = random.Next(128, 256);
 
-                // 将RGB转换为16进制字符串
+                // 将RGB转换为16进制字符串 返回带有颜色标签的物品名称
                 string hexColor = $"{r:X2}{g:X2}{b:X2}";
-
-                // 返回带有颜色标签的物品名称
                 return $"[c/{hexColor}:{name}]";
             });
 
             // 使用逗号分隔物品名称
-            mess.Append($"您拥有[C/91DFBB:{WNames.Count}个]物品在修改数据内: {string.Join(" ", color)}");
+            mess.Append($"已重读身上[C/91DFBB:{WNames.Count}]个修改物品:{string.Join(", ", color)}");
         }
 
         // 发送消息给玩家
@@ -1130,7 +1176,7 @@ public class Commands
                 (name: "用速", value: $"{data2.useTime}", param: "ut"),
                 (name: "攻速", value: $"{data2.useAnimation}", param: "ua"),
                 (name: "弹幕", value: $"{data2.shoot}", param: "sh"),
-                (name: "弹速", value: $"{data2.shootSpeed}", param: "ss"),
+                (name: "射速", value: $"{data2.shootSpeed}", param: "ss"),
                 (name: "弹药", value: $"{data2.ammo}", param: "am"),
                 (name: "发射器", value: $"{data2.useAmmo}", param: "uaa"),
                 (name: "颜色", value: $"{ColorToHex(data2.color)}", param: "hc"),
@@ -1170,7 +1216,7 @@ public class Commands
     }
     #endregion
 
-    #region 比较手上物品的修改数值 在使用菜单指令时 只列出修改过的属性
+    #region 比较物品的修改数值 只列出修改过的属性
     private static Dictionary<string, object> CompareItem(Database.PlayerData.ItemData Data, int type, int stack, int prefix, int damage, float scale, float knockBack, int useTime, int useAnimation, int shoot, float shootSpeed, int ammo, int useAmmo, Color color)
     {
         string ColorToHex(Color color)
@@ -1185,7 +1231,7 @@ public class Commands
         }
 
         var diff = new Dictionary<string, object>();
-        if (Data.type != type) diff.Add("物品ID", Data.type);
+        if (Data.type != type) diff.Add($"{Lang.GetItemNameValue(Data.type)}", Data.type);
         if (Data.stack != stack) diff.Add("数量", Data.stack);
         if (Data.prefix != prefix) diff.Add("前缀", pr);
         if (Data.damage != damage) diff.Add("伤害", Data.damage);
@@ -1193,8 +1239,8 @@ public class Commands
         if (Data.knockBack != knockBack) diff.Add("击退", Data.knockBack);
         if (Data.useTime != useTime) diff.Add("用速", Data.useTime);
         if (Data.useAnimation != useAnimation) diff.Add("攻速", Data.useAnimation);
-        if (Data.shoot != shoot) diff.Add("弹幕ID", Data.shoot);
-        if (Data.shootSpeed != shootSpeed) diff.Add("弹速", Data.shootSpeed);
+        if (Data.shoot != shoot) diff.Add("弹幕", Data.shoot);
+        if (Data.shootSpeed != shootSpeed) diff.Add("射速", Data.shootSpeed);
         if (Data.ammo != ammo) diff.Add("弹药", Data.ammo);
         if (Data.useAmmo != useAmmo) diff.Add("发射器", Data.useAmmo);
         if (Data.color != color) diff.Add("颜色", ColorToHex(Data.color));
@@ -1206,51 +1252,49 @@ public class Commands
     #region 参数不对的信息反馈
     private static void param(TSPlayer plr)
     {
-        plr.SendMessage("[c/E4EC99:参数:] 伤害[c/FF6975:d] 数量[c/74E55D:sk] 前缀[c/74E55D:pr]\n" +
-            "大小[c/5C9EE1:c] 击退[c/F79361:k] 用速[c/74E55D:t] 攻速[c/F7B661:a]\n" +
-            "弹幕[c/A3E295:h] 弹速[c/F7F261:s] 弹药[c/91DFBB:m] 发射器[c/5264D9:aa]\n" +
-            "颜色[c/5264D9:hc]", 141, 209, 214);
+        plr.SendInfoMessage($"\n弹药相关(远程只需前2步):\n" +
+            $"1.先用[c/91DFBB:m 1]指定1个物品作为[c/C9360D:弹药]\n" +
+            $"2.再用[c/FF6975:aa 1]把另1个物品设为[c/0DD65D:发射器]\n" +
+            $"3.近战想用[c/FF5338:弹药]得加个[c/2F99D7:sh 1]弹幕属性");
+        plr.SendMessage("免堆叠检测权限:[c/40A9DE:tshock.ignore.itemstack]", 227, 158, 97);
+        plr.SendInfoMessage("颜色相关:[c/28DE5E:hc 2858de] (16进制无#号)");
+        plr.SendMessage("词缀相关:玩家[c/D45B7E:手上不是修改物品]时才能改", Color.Lavender);
+        plr.SendMessage("用速相关:影响所有[c/FFBE38:远程]越小单次间隔越密集", 233, 77, 53);
+        plr.SendMessage("攻速相关:影响所有[c/EAF836:近战]越小挥舞间隔越快", 47, 153, 215);
+        plr.SendMessage("除了[c/DADEA0:/mw up]其他都会还原数值再修改", Color.YellowGreen);
+        plr.SendMessage("伤害[c/FF6975:d] 数量[c/74E55D:sk] 前缀[c/74E55D:pr] 大小[c/5C9EE1:sc] \n" +
+            "击退[c/F79361:kb] 用速[c/74E55D:ut] 攻速[c/F7B661:ua] 射速[c/F7F261:ss] \n" +
+            "弹幕[c/A3E295:sh] 弹药[c/91DFBB:m] 发射器[c/5264D9:aa] 颜色[c/5264D9:hc]", 141, 209, 214);
     }
 
     private static void SetError(TSPlayer plr)
     {
-        plr.SendMessage($"\n请手持一个物品后再使用指令:[c/94D3E4: /mw s]", Color.AntiqueWhite);
-        plr.SendInfoMessage("建议:数值没同步自己用一下[c/94D3E4: /mw read]");
-        plr.SendSuccessMessage("该指令为修改自己手持物品参数,格式为:");
-        plr.SendInfoMessage("/mw s d 200 a 10 … 自定义组合");
-        plr.SendInfoMessage($"先用[c/91DFBB:/mw s m 1]指定1个物品作为弹药\n" +
-            $"再用[c/FF6975:/mw s aa 1]把另1个物品设为发射器");
         param(plr);
+        plr.SendSuccessMessage("修改自己手上物品参数,格式为:");
+        plr.SendMessage("/mw s d 20 ua 10 … 自定义组合", Color.AntiqueWhite);
     }
 
     private static void GiveError(TSPlayer plr)
     {
-        plr.SendInfoMessage("\n建议发3次:[c/91DFBB:第1次建数据,第2次发物品,第3次同步数值]");
-        plr.SendSuccessMessage("该指令为给予别人指定物品参数,格式为:");
-        plr.SendInfoMessage("/mw g 玩家名 物品名 d 200 ua 10 …");
-        plr.SendInfoMessage($"先用[c/91DFBB:/mw g 玩家名 物品名 m 1]指定1个物品作为弹药\n" +
-            $"再用[c/FF6975:/mw g 玩家名 物品名 aa 1]把另1个物品设为发射器");
         param(plr);
+        plr.SendSuccessMessage("给别人指定物品并改参数,格式为:");
+        plr.SendMessage("/mw g 玩家名 物品名 d 20 ua 10 …", Color.AntiqueWhite);
+        plr.SendInfoMessage("发3次:[c/91DFBB:建数据>发物品>同步数值]");
     }
 
     private static void AllError(TSPlayer plr)
     {
-        plr.SendInfoMessage("\n建议发3次:[c/91DFBB:第1次建数据,第2次发物品,第3次同步在线数值]");
-        plr.SendSuccessMessage("该指令为给予所有人指定物品参数,格式为:");
-        plr.SendInfoMessage("/mw all 物品名 d 200 ua 10 …");
-        plr.SendInfoMessage($"先用[c/91DFBB:/mw all 物品名 m 1]指定1个物品作为弹药\n" +
-            $"再用[c/FF6975:/mw all 物品名 aa 1]把另1个物品设为发射器");
         param(plr);
+        plr.SendSuccessMessage("给所有人指定物品并改参数,格式为:");
+        plr.SendMessage("/mw all 物品名 d 200 ua 10 …", Color.AntiqueWhite);
+        plr.SendInfoMessage("\n发3次:[c/91DFBB:建数据>发物品>同步数值]");
     }
 
     private static void UpdateError(TSPlayer plr)
     {
-        plr.SendInfoMessage("\n在保留原有修改参数下进行二次更改");
-        plr.SendSuccessMessage("该指令为已有修改物品的玩家更正参数,格式为:");
-        plr.SendInfoMessage("/mw up 玩家名 物品名 d 200(只能改1个参数)");
-        plr.SendInfoMessage($"先用[c/91DFBB:/mw up 玩家名 物品名 m 1]指定1个物品作为弹药\n" +
-            $"再用[c/FF6975:/mw up 玩家名 物品名 aa 1]把另1个物品设为发射器");
         param(plr);
+        plr.SendInfoMessage("\n保留原有修改参数进行二次更改,格式为:");
+        plr.SendMessage("/mw up 玩家名 物品名 d 20 ua 10", Color.AntiqueWhite);
     }
     #endregion
 
@@ -1275,10 +1319,9 @@ public class Commands
                 return $"{color.R:X2}{color.G:X2}{color.B:X2}";
             }
 
-            plr.SendInfoMessage("手持:[c/92C5EC:{0}] 伤害[c/FF6975:{1}] 前缀[c/F5DDD3:{2}] 数量[c/2CCFC6:{3}]\n" +
-                "大小[c/5C9EE1:{4}] 击退[c/5C9EE1:{5}] 用速[c/74E55D:{6}] 攻速[c/94BAE0:{7}]\n" +
-                "弹幕[c/A3E295:{8}] 弹速[c/F0EC9E:{9}] 作弹药[c/91DFBB:{10}] 发射器[c/5264D9:{11}]\n" +
-                "颜色[c/F5DDD3:{12}]",
+            plr.SendInfoMessage("手持[c/92C5EC:{0}] 伤害[c/FF6975:{1}] 前缀[c/F5DDD3:{2}] 数量[c/2CCFC6:{3}] 大小[c/5C9EE1:{4}] \n" +
+                "击退[c/5C9EE1:{5}] 用速[c/74E55D:{6}] 攻速[c/94BAE0:{7}] 弹幕[c/E83C10:{8}] 射速[c/F0EC9E:{9}]\n" +
+                "弹药[c/91DFBB:{10}] 发射器[c/5264D9:{11}] 颜色[c/F5DDD3:{12}]",
             Lang.GetItemName(Sel.type), Sel.damage, pr, Sel.stack,
             Sel.scale, Sel.knockBack, Sel.useTime, Sel.useAnimation, Sel.shoot, Sel.shootSpeed, Sel.ammo, Sel.useAmmo, ColorToHex(Sel.color));
 
