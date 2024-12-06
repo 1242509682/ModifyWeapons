@@ -8,6 +8,17 @@
 ## Update Log
 
 ```
+**v1.2.5**
+1. Added automatic cleanup functionality and its corresponding toggle command: `/mw clear`
+   - This command controls the configuration option `Clear Modified Weapons`.
+   - It also includes a `Clear Exemption List` configuration item for filtering.
+   - Players with `mw.admin` permissions are immune to this cleanup.
+   - Modified weapons will be cleaned up when players intentionally drop items or place them in chests (items dropped during reload will not be cleared).
+
+2. Added logic for automatically recognizing economy commands to trigger a reload (effective for admins as well):
+   - When a player sends a string starting with `/` or `.`, followed by keywords from the `Trigger Reload Command Detection List`,
+   - It checks if the player's inventory contains modified weapons, and if so, triggers a reload. This prevents players from maliciously refreshing item values through purchases.
+
 v1.2.4
 Optimized broadcast and message sending phrases, added instructions for modifying parameters.
 Removed the automatic update damage detection logic (had bugs).
@@ -109,7 +120,8 @@ v1.0.0
 | /mw join | /mw j |   mw.use    |    Toggle switch for login reload    |
 | /mw list | /mw l |   mw.use    |    List all modified items    |
 | /mw read | None |   mw.use    |    Manually reload all modified items    |
-| /mw auto | /mw at |   mw.use    |    Manually reload all modified items    |
+| /mw auto | /mw at |   mw.admn    |    Toggle the automatic reload feature    |
+| /mw clear | /mw cr |   mw.admin    |    Toggle the automatic cleanup feature    |
 | /mw open PlayerName | /mw op |   mw.admin    |    Switch another player's login reload state    |
 | /mw add PlayerName Count | None |   mw.admin    |    Add reload counts    |
 | /mw del PlayerName | None |   mw.admin    |    Delete specified player's data    |
@@ -126,11 +138,20 @@ v1.0.0
 > Configuration file location：tshock/修改武器.json
 ```json
 {
-  "Plugin Enabled": true,
+  "Plugin Switch": true,
   "Initial Reload Count": 2,
-  "Automatic Reload": 0,
-  "Automatic Reload Cooldown Seconds": 5,
-  "Create Data for Admins Only on Login": false,
+  "Auto Reload": 1,
+  "Trigger Reload Command Detection List": [
+    "deal",
+    "shop",
+    "fishshop",
+    "fs"
+  ],
+  "Clear Modified Weapons (Dropped or placed in chests will disappear)": true,
+  "Clear Exemption List": [
+    1
+  ],
+  "Create Data Only on Join for Admins": false,
   "Cooldown Seconds to Increase Reload Count": 1800.0
 }
 ```

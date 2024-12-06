@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Text;
 using Microsoft.Xna.Framework;
+using MySqlX.XDevAPI.Relational;
 using Terraria;
 using TShockAPI;
 using TShockAPI.DB;
@@ -60,8 +62,16 @@ public class Commands
                 case "read":
                     if (data != null)
                     {
+                        data.Process = 2;
+
+                        if(Config.Auto == 1)
+                        {
+                            data.ReadCount += 2;
+                        }
+
                         UpdataRead(plr, data);
-                        if (!plr.HasPermission("mw.admin") && !plr.HasPermission("mw.cd") && Config.Auto != 1)
+
+                        if (Config.Auto != 1 && !plr.HasPermission("mw.admin") && !plr.HasPermission("mw.cd"))
                         {
                             plr.SendInfoMessage($"剩余修改物品重读次数为:[C/A7D3D6:{data.ReadCount}]");
                         }
@@ -77,9 +87,8 @@ public class Commands
                         if (data2 != null)
                         {
                             data2.Join = !data2.Join;
-
                             DB.UpdateData(data2);
-                            plr.SendSuccessMessage(data.Join ?
+                            plr.SendSuccessMessage(data2.Join ?
                                 $"{data2.Name}的进服重读:[c/92C5EC:启用]" :
                                 $"{data2.Name}的进服重读:[c/E8585B:关闭]");
                         }
@@ -135,6 +144,7 @@ public class Commands
                                     if (plr2 != null && data2 != null) // 如果目标玩家在线，则发送消息并直接重读数值
                                     {
                                         data2.ReadCount += 2;
+                                        data2.Process = 2;
                                         plr2.SendMessage($"\n管理员 [c/D4E443:{plr.Name}] 已为所有玩家[c/92C5EC:手动重读]修改物品", 0, 196, 177);
                                         UpdataRead(plr2, data2);
                                     }
@@ -172,6 +182,7 @@ public class Commands
                         {
                             Config.Auto = num;
                             Config.Write();
+
                             if (Config.Auto == 1)
                             {
                                 plr.SendSuccessMessage($"已[c/92C5EC:开启]自动重读修改功能！");
@@ -183,13 +194,31 @@ public class Commands
                         }
                         else
                         {
-                            plr.SendMessage($"[c/ED3241:注：]开自动重读会关闭[c/F28F2B:玩家重读次数]机制\n" +
-                                $"[c/FFFAA1:手持修改物品时]触发重读条件:\n" +
-                                $"0.冷却秒数 [c/FFB357:{Config.AutoTimer}秒]\n" +
-                                $"1.正在使用 [c/4C95DD:修改的物品]\n" +
-                                $"2.词缀数据 [c/4C95DD:不等于] [c/86F06E:手上词缀]\n" +
-                                $"3.作为弹药 [c/FFB357:物品] [c/86F06E:直接使用]\n" +
-                                $"4.指令格式 [c/FFF540:/mw auto 1 或 0]", 100, 210, 190);
+                            plr.SendMessage($"触发[c/FFFAA1:自动重读]规则:\n" +
+                                $"一.手上拿着并[c/FFB357:正在使用]修改的物品\n" +
+                                $" 1.数据库内词缀与[c/4C95DD:手上]词缀[c/86F06E:不匹配]\n" +
+                                $" 2.作为弹药的[c/FFB357:物品]直接[c/86F06E:当武器]使用\n" +
+                                $"二.使用经济类[c/4C95DD:指令][c/86F06E:背包有]修改物品\n" +
+                                $"指令正确格式：[c/FFF540:/mw auto 1 或 0]", 100, 210, 190);
+                        }
+                    }
+                    return;
+
+                case "cr":
+                case "clear":
+                    if (plr.HasPermission("mw.admin"))
+                    {
+                        if (!Config.ClearItem)
+                        {
+                            Config.ClearItem = true;
+                            Config.Write();
+                            plr.SendSuccessMessage($"已[c/92C5EC:开启]自动清理功能！");
+                        }
+                        else
+                        {
+                            Config.ClearItem = false;
+                            Config.Write();
+                            plr.SendSuccessMessage($"已[c/E8585B:关闭]自动清理功能！");
                         }
                     }
                     return;
@@ -327,6 +356,7 @@ public class Commands
                             else
                             {
                                 datas.ReadCount += 2;
+                                datas.Process = 2;
                                 var plr2 = TShock.Players.FirstOrDefault(p => p != null && p.IsLoggedIn && p.Active && p.Name == other);
                                 if (plr2 != null) //在线重读并通告玩家 物品修改信息
                                 {
@@ -443,13 +473,14 @@ public class Commands
                                     if (plr2 != null)// 如果目标玩家在线，则发送消息并直接重读数值
                                     {
                                         datas.ReadCount += 2;
+                                        datas.Process = 2;
                                         plr2.SendMessage($"\n管理员 [c/D4E443:{plr.Name}] 已发送修改物品: [c/92C5EC:{Lang.GetItemName(item.type)}]", 0, 196, 177);
 
                                         if (datas.Dict.TryGetValue(plr2.Name, out var DataList))
                                         {
                                             foreach (var item2 in DataList)
                                             {
-                                                var hasItem = plr2.TPlayer.inventory.Take(50).Any(x => x != null && x.type == item2.type);
+                                                var hasItem = plr2.TPlayer.inventory.Take(58).Any(x => x != null && x.type == item2.type);
 
                                                 if (!hasItem)
                                                 {
@@ -597,7 +628,8 @@ public class Commands
             "/mw join —— 切换[c/4C95DD:进服重读]开关\n" +
             "/mw list —— [c/FF6863:列出所有]修改物品\n" +
             "/mw read —— [c/FFF540:手动重读]修改物品\n" +
-            "/mw auto —— [c/F28F2B:自动重读]修改物品\n" +
+            "/mw auto —— [c/F28F2B:自动重读]功能开关\n" +
+            "/mw clear —— [c/FFB357:自动清理]功能开关\n" +
             "/mw open 玩家名 —— 切换[c/7ECCED:别人进服]重读\n" +
             "/mw add 玩家名 次数 ——添加[c/D68ACA:重读次数]\n" +
             "/mw del 玩家名 —— [c/DF909A:删除指定]玩家数据\n" +
@@ -649,7 +681,7 @@ public class Commands
     #endregion
 
     #region 新物品属性
-    private static void MyNewItem(TSPlayer plr, Item item, Item newItem, int damage, int stack, byte prefix, float scale, float knockBack, int useTime, int useAnimation,
+    public static void MyNewItem(TSPlayer plr, Item item, Item newItem, int damage, int stack, byte prefix, float scale, float knockBack, int useTime, int useAnimation,
         int shoot, float shootSpeed, int ammo, int useAmmo)
     {
         newItem.playerIndexTheItemIsReservedFor = plr.Index;
@@ -734,6 +766,12 @@ public class Commands
             {
                 ShowReadItem(plr, ReItem);
             }
+
+            if (datas.Process == 2)
+            {
+                datas.Process = 0;
+                DB.UpdateData(datas);
+            }
         }
     }
     #endregion
@@ -747,45 +785,42 @@ public class Commands
             return;
         }
 
-        if (Config.Auto != 1) //当自动更新关闭时
+        if (!plr.HasPermission("mw.cd") && !plr.HasPermission("mw.admin")) // 没有权限
         {
-            var last = 0f;
-            var now = DateTime.UtcNow;
-            if (data.ReadTime != default)
+            if (data.ReadCount >= 1) // 有重读次数 直接重读
             {
-                // 上次重读时间，保留2位小数
-                last = (float)Math.Round((now - data.ReadTime).TotalSeconds, 2);
-            }
-
-            if (!plr.HasPermission("mw.cd") && !plr.HasPermission("mw.admin")) // 没有权限
-            {
-                if (data.ReadCount >= 1) // 有重读次数 直接重读
+                if (data.Process == 2)
                 {
                     ReloadItem(plr, data);
-                    data.ReadCount = Math.Max(0, data.ReadCount - 1); // 最少1次 最多减到0
-                }
-                else // 没有重读次数
-                {
-                    if (last >= Config.ReadTime) // 计算过去时间 自动累积重读次数 重置读取时间
-                    {
-                        data.ReadCount++;
-                        data.ReadTime = DateTime.UtcNow;
-                    }
-                    else // 冷却时间没到 播报现在的冷却时间
-                    {
-                        plr.SendInfoMessage($"您的重读冷却:[c/5C9EE1:{last}] < [c/FF6975:{Config.ReadTime}]秒 重读次数:[c/93E0D8:{data.ReadCount}]\n" +
-                            $"请等待[c/93E0D8:{Config.ReadTime}]秒后手动重读指令:[c/A7D3D6:/mw read]");
-                    }
                 }
 
-                DB.UpdateData(data);
+                data.ReadCount = Math.Max(0, data.ReadCount - 1); // 最少1次 最多减到0
             }
-            else // 有1个权限直接重读
+            else // 没有重读次数
             {
-                ReloadItem(plr, data);
+                var last = 0f;
+                var now = DateTime.UtcNow;
+                if (data.ReadTime != default)
+                {
+                    // 上次重读时间，保留2位小数
+                    last = (float)Math.Round((now - data.ReadTime).TotalSeconds, 2);
+                }
+
+                if (last >= Config.ReadTime) // 计算过去时间 自动累积重读次数 重置读取时间
+                {
+                    data.ReadCount++;
+                    data.ReadTime = DateTime.UtcNow;
+                }
+                else // 冷却时间没到 播报现在的冷却时间
+                {
+                    plr.SendInfoMessage($"您的重读冷却:[c/5C9EE1:{last}] < [c/FF6975:{Config.ReadTime}]秒 重读次数:[c/93E0D8:{data.ReadCount}]\n" +
+                        $"请等待[c/93E0D8:{Config.ReadTime}]秒后手动重读指令:[c/A7D3D6:/mw read]");
+                }
             }
+
+            DB.UpdateData(data);
         }
-        else
+        else //有权限直接重读
         {
             ReloadItem(plr, data);
         }
@@ -1036,6 +1071,7 @@ public class Commands
                 }
 
                 datas.ReadCount += 2;
+                datas.Process = 2;
 
                 //判断玩家是否在线
                 var plr = TShock.Players.FirstOrDefault(p => p != null && p.IsLoggedIn && p.Active && p.Name == name);
