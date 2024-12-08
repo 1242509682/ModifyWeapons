@@ -8,7 +8,19 @@
 ## Update Log
 
 ```
-**v1.2.5**
+v1.2.6
+The following features were custom-made for server admin "556":
+To facilitate RPG configuration writing, placeholders {0} for the player's name have been added to the subcommands: up, del, give, all.
+Added an option to only give items with specified names when using the give and all subcommands. When enabled, it will only provide the named items; otherwise, it gives all modified items stored in the player's database.
+Introduced public weapons, which are item data written into new players' accounts based on the configuration file. When players pick up these items during exploration, they can manually reload to get the new data. Public weapon data has higher priority than item data given by commands. Data updates occur only when players select the public weapons.
+Modified the /reload reloading logic (effective only when public weapons are enabled): announces differences between player data and public weapon configurations. If a weapon is not found in the configuration after reloading, it will be removed from all players' data.
+If the "Public Weapon Broadcast Title" configuration contains any content, it will announce additional information such as xxxxx Public weapons have been updated.
+Added new command /mw pw (empty input provides format instructions):
+Format 1: /mw pw ItemName da 100 — modifies or adds specified public weapons.
+Format 2: /mw pw on & off enables/disables public weapons.
+Format 3: /mw pw del ItemName removes the specified weapon from the configuration and all player data.
+
+v1.2.5
 1. Added automatic cleanup functionality and its corresponding toggle command: `/mw clear`
    - This command controls the configuration option `Clear Modified Weapons`.
    - It also includes a `Clear Exemption List` configuration item for filtering.
@@ -129,6 +141,7 @@ v1.0.0
 | /mw set | /mw s |   mw.admin    |    Modify held item attributes    |
 | /mw give | /mw g |   mw.admin    |    Give a player a modified item and create data    |
 | /mw all | None |   mw.admin    |    Give a modified item to all players and create data    |
+| /mw pw | /mw p |   mw.admin    |    Reload for all or enable join reload    |
 | /mw reads | /mw rds |   mw.admin    |    Help everyone's reload "modified item"    |
 | /mw reset | /mw rs |   mw.admin    |    Reset all player data    |
 | /reload  | None |   tshock.cfg.reload    |    Reload configuration file    |
@@ -138,8 +151,9 @@ v1.0.0
 > Configuration file location：tshock/修改武器.json
 ```json
 {
-  "Plugin Switch": true,
-  "Initial Reload Count": 2,
+  "Plugin Enabled": true,
+  "Initial Reload Times": 2,
+  "Only Give Specified Named Items": true,
   "Auto Reload": 1,
   "Trigger Reload Command Detection List": [
     "deal",
@@ -147,12 +161,63 @@ v1.0.0
     "fishshop",
     "fs"
   ],
-  "Clear Modified Weapons (Dropped or placed in chests will disappear)": true,
-  "Clear Exemption List": [
+  "Clear Modified Weapons (Disappear when thrown or placed in chests)": true,
+  "Exempt List": [
     1
   ],
-  "Create Data Only on Join for Admins": false,
-  "Cooldown Seconds to Increase Reload Count": 1800.0
+  "Join Only Gives Data For Admin": false,
+  "Increase Reload Times Cooling Seconds": 1800.0,
+  "Enable Public Weapons": true,
+  "Sync Public Weapons Interval Seconds": 15,
+  "Public Weapon Broadcast Title": "Yu Xue's Server ",
+  "Public Weapons": [
+    {
+      "Name": "Musket",
+      "ID": 96,
+      "Quantity": 1,
+      "Prefix": 82,
+      "Damage": 60,
+      "Size": 1.0,
+      "Knockback": 5.5,
+      "Use Speed": 32,
+      "Attack Speed": 15,
+      "Bullets": 10,
+      "Bullet Speed": 9.0,
+      "Ammo": 0,
+      "Launcher": 97,
+      "Color": {
+        "packedValue": 0,
+        "R": 0,
+        "G": 0,
+        "B": 0,
+        "A": 0,
+        "PackedValue": 0
+      }
+    },
+    {
+      "Name": "Death Gun",
+      "ID": 800,
+      "Quantity": 1,
+      "Prefix": 82,
+      "Damage": 25,
+      "Size": 1.0,
+      "Knockback": 2.5,
+      "Use Speed": 32,
+      "Attack Speed": 15,
+      "Bullets": 5,
+      "Bullet Speed": 6.0,
+      "Ammo": 0,
+      "Launcher": 97,
+      "Color": {
+        "packedValue": 0,
+        "R": 0,
+        "G": 0,
+        "B": 0,
+        "A": 0,
+        "PackedValue": 0
+      }
+    }
+  ]
 }
 ```
 ## FeedBack

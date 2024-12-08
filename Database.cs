@@ -25,14 +25,16 @@ public class Database
         public bool Hand { get; set; }
         public bool Join { get; set; }
         public DateTime ReadTime { get; set; }
+        public DateTime SyncTime { get; set; }
         public Dictionary<string, List<ItemData>> Dict { get; set; } = new Dictionary<string, List<ItemData>>();
-        internal PlayerData(string name = "",int readCount = 0, bool hand = false, bool join = true, DateTime? readTime = null, Dictionary<string, List<ItemData>>? dict = null, int process = 0)
+        internal PlayerData(string name = "",int readCount = 0, bool hand = false, bool join = true, DateTime? readTime = null, DateTime? syncTime = null, Dictionary<string, List<ItemData>>? dict = null, int process = 0)
         {
             this.Name = name ?? "";
             this.ReadCount = readCount;
             this.Hand = hand;
             this.Join = join;
             this.ReadTime = readTime ?? DateTime.UtcNow;
+            this.SyncTime = syncTime ?? DateTime.UtcNow;
             this.Dict = dict ?? new Dictionary<string, List<ItemData>>();
             this.Process = process;
         }
@@ -89,6 +91,7 @@ public class Database
             new SqlColumn("Hand", MySqlDbType.Int32) { DefaultValue = "0" },
             new SqlColumn("IsJoin", MySqlDbType.Int32) { DefaultValue = "0" },
             new SqlColumn("ReadTime", MySqlDbType.DateTime) { DefaultValue = "CURRENT_TIMESTAMP" },
+            new SqlColumn("SyncTime", MySqlDbType.DateTime) { DefaultValue = "CURRENT_TIMESTAMP" },
             new SqlColumn("Dict", MySqlDbType.LongText)  // 文本列，用于存储序列化的物品ID列表
         ));
     }
@@ -98,8 +101,8 @@ public class Database
     public bool AddData(PlayerData data)
     {
         var dictJson = JsonSerializer.Serialize(data.Dict, Options);
-        return TShock.DB.Query("INSERT INTO ModifyWeapons (Name, ReadCount,IsProcess, Hand, IsJoin, ReadTime, Dict) VALUES (@0, @1, @2, @3, @4, @5, @6)",
-            data.Name, data.ReadCount, data.Process, data.Hand ? 1 : 0, data.Join ? 1 : 0, data.ReadTime, dictJson) != 0;
+        return TShock.DB.Query("INSERT INTO ModifyWeapons (Name, ReadCount,IsProcess, Hand, IsJoin, ReadTime, SyncTime, Dict) VALUES (@0, @1, @2, @3, @4, @5,@6, @7)",
+            data.Name, data.ReadCount, data.Process, data.Hand ? 1 : 0, data.Join ? 1 : 0, data.ReadTime, data.SyncTime, dictJson) != 0;
     }
     #endregion
 
@@ -108,8 +111,8 @@ public class Database
     {
         var dictJson = JsonSerializer.Serialize(data.Dict, Options);
 
-        return TShock.DB.Query("UPDATE ModifyWeapons SET ReadCount = @0,IsProcess = @1, Hand = @2, IsJoin = @3, ReadTime = @4, Dict = @5 WHERE Name = @6",
-            data.ReadCount, data.Process, data.Hand ? 1 : 0, data.Join ? 1 : 0, data.ReadTime, dictJson, data.Name) != 0;
+        return TShock.DB.Query("UPDATE ModifyWeapons SET ReadCount = @0,IsProcess = @1, Hand = @2, IsJoin = @3, ReadTime = @4,SyncTime = @5, Dict = @6 WHERE Name = @7",
+            data.ReadCount, data.Process, data.Hand ? 1 : 0, data.Join ? 1 : 0, data.ReadTime, data.SyncTime, dictJson, data.Name) != 0;
     }
     #endregion
 
@@ -143,11 +146,47 @@ public class Database
                 process: reader.Get<int>("IsProcess"),
                 join: reader.Get<int>("IsJoin") == 1,
                 readTime: reader.Get<DateTime>("ReadTime"),
+                syncTime: reader.Get<DateTime>("SyncTime"),
                 dict: dict
             );
         }
 
         return null;
+    }
+    #endregion
+
+    #region 移除所有玩家的指定物品方法
+    public bool RemovePwData(int type)
+    {
+        var AllData = GetAll();
+        var flag = false;
+
+        foreach (var data in AllData)
+        {
+            if (data.Dict != null && data.Dict.Values.Any(list => list.Any(item => item.type == type)))
+            {
+                // 移除指定类型的物品
+                foreach (var dict in data.Dict.ToList())
+                {
+                    dict.Value.RemoveAll(item => item.type == type);
+                }
+
+                // 更新玩家数据
+                if (UpdateData(data))
+                {
+                    flag = true;
+                }
+            }
+        }
+
+        if (flag)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
     #endregion
 
@@ -168,6 +207,7 @@ public class Database
                 process: reader.Get<int>("IsProcess"),
                 join: reader.Get<int>("IsJoin") == 1,
                 readTime: reader.Get<DateTime>("ReadTime"),
+                syncTime: reader.Get<DateTime>("SyncTime"),
                 dict: dict
             ));
         }
