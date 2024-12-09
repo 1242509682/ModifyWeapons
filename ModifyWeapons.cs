@@ -15,7 +15,7 @@ public class Plugin : TerrariaPlugin
     #region 插件信息
     public override string Name => "修改武器";
     public override string Author => "羽学";
-    public override Version Version => new Version(1, 2, 6);
+    public override Version Version => new Version(1, 2, 7);
     public override string Description => "修改玩家物品数据并自动储存重读,可使用/mw指令给予玩家指定属性的物品";
     #endregion
 
@@ -59,7 +59,6 @@ public class Plugin : TerrariaPlugin
         if (Config.PublicWeapons && Config.ItemDatas != null)
         {
             PublicWeaponsMess();
-            SyncPw();
         }
     }
 
@@ -94,9 +93,11 @@ public class Plugin : TerrariaPlugin
             {
                 Name = plr.Name,
                 Hand = true,
-                Join = false,
+                Join = true,
+                Alone = false,
                 ReadCount = Config.ReadCount,
                 Process = 0,
+                AloneTime = default,
                 ReadTime = DateTime.UtcNow,
                 SyncTime = DateTime.UtcNow,
                 Dict = new Dictionary<string, List<Database.PlayerData.ItemData>>()
@@ -105,10 +106,10 @@ public class Plugin : TerrariaPlugin
         }
         else if (data.Join)
         {
-            //自动更新模式每次进服都会加2次重读次数
+            //自动更新模式每次进服都会加1次重读次数
             if (Config.Auto == 1)
             {
-                data.ReadCount += 2;
+                DB.UpReadCount(plr.Name, 1);
             }
 
             data.Process = 2;
@@ -129,6 +130,23 @@ public class Plugin : TerrariaPlugin
         if (plr == null || !plr.IsLoggedIn || !plr.Active || datas == null || !Config.Enabled)
         {
             return;
+        }
+        var now = DateTime.UtcNow;
+
+        //触发延迟指令
+        if (Config.Alone)
+        {
+            var last = 0f;
+            if (datas.AloneTime != default)
+            {
+                last = (float)Math.Round((now - datas.AloneTime).TotalMilliseconds, 2);
+            }
+            if (datas.Alone && last >= Config.AloneTimer)
+            {
+                Cmd(plr);
+                datas.Alone = false;
+                DB.UpdateData(datas);
+            }
         }
 
         //自动模式
@@ -203,7 +221,6 @@ public class Plugin : TerrariaPlugin
         //公用武器
         if (Config.PublicWeapons)
         {
-            var now = DateTime.UtcNow;
             if ((now - datas.SyncTime).TotalSeconds >= Config.SyncTime)
             {
                 if (!datas.Dict.ContainsKey(plr.Name))
@@ -243,31 +260,6 @@ public class Plugin : TerrariaPlugin
     }
     #endregion
 
-    #region 同步配置中的公用武器结构到玩家数据中
-    private static void SyncPw()
-    {
-        var AllData = DB.GetAll();
-
-        foreach (var data in AllData)
-        {
-            if (data.Dict != null && data.Dict.TryGetValue(data.Name, out var dataList))
-            {
-                var RM = dataList.Where(data => !Config.ItemDatas!.Any(item => item.type == data.type)).ToList();
-
-                foreach (var remove in RM)
-                {
-                    dataList.Remove(remove);
-                }
-
-                if (RM.Any())
-                {
-                    DB.UpdateData(data);
-                }
-            }
-        }
-    }
-    #endregion
-
     #region 获取公用武器的物品中文名
     public static void WriteName()
     {
@@ -286,11 +278,8 @@ public class Plugin : TerrariaPlugin
     public static void PublicWeaponsMess()
     {
         var itemName = new HashSet<int>();
-
-        if (Config.Title.Any())
-        {
-            TShock.Utils.Broadcast(Config.Title + "[c/AD89D5:公][c/D68ACA:用][c/DF909A:武][c/E5A894:器] 已更新公用武器", 240, 255, 150);
-        }
+        var flag = false;
+        var MessToPlayer = new List<Tuple<TSPlayer, string>>(); // 用于存储要发送给每个玩家的消息
 
         foreach (var item in Config.ItemDatas)
         {
@@ -319,9 +308,22 @@ public class Plugin : TerrariaPlugin
                         {
                             mess.Append($" {diff.Key}{diff.Value}");
                         }
-                        plr.SendMessage($"{mess}", 244, 255, 150);
+                        MessToPlayer.Add(Tuple.Create(plr, mess.ToString())); // 将消息存入列表
+                        flag = true;
                     }
                 }
+            }
+        }
+
+        if (Config.Title.Any() && flag)
+        {
+            // 首先进行广播
+            TShock.Utils.Broadcast(Config.Title + "[c/AD89D5:公][c/D68ACA:用][c/DF909A:武][c/E5A894:器] 已更新!", 240, 255, 150);
+
+            // 立即发送玩家消息
+            foreach (var tuple in MessToPlayer)
+            {
+                tuple.Item1.SendMessage(tuple.Item2, 244, 255, 150);
             }
         }
     }
@@ -465,6 +467,29 @@ public class Plugin : TerrariaPlugin
                 }
             }
         }
+    }
+    #endregion
+
+    #region 用临时超管权限让玩家执行命令
+    private void Cmd(TSPlayer plr)
+    {
+        var mess = new StringBuilder();
+        mess.Append("触发延时指令:");
+        Group group = plr.Group;
+        try
+        {
+            plr.Group = new SuperAdminGroup();
+            foreach (var cmd in Config.AloneList)
+            {
+                TShockAPI.Commands.HandleCommand(plr, cmd);
+                mess.Append($" [c/91DFBB:{cmd}]");
+            }
+        }
+        finally
+        {
+            plr.Group = group;
+        }
+        plr.SendMessage($"{mess}", 0, 196, 177);
     }
     #endregion
 

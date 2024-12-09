@@ -15,14 +15,21 @@ namespace ModifyWeapons
         [JsonProperty("只给指定名字物品", Order = 2)]
         public bool OnlyItem { get; set; } = true;
 
-        [JsonProperty("自动重读", Order = 3)]
+        [JsonProperty("给完物品的延迟指令", Order = 3)]
+        public bool Alone { get; set; } = true;
+        [JsonProperty("延迟指令毫秒", Order = 4)]
+        public float AloneTimer { get; set; } = 500.0f;
+        [JsonProperty("延迟指令表", Order = 5)]
+        public HashSet<string> AloneList { get; set; } = new HashSet<string>();
+
+        [JsonProperty("自动重读", Order = 6)]
         public int Auto { get; set; } = 1;
-        [JsonProperty("触发重读指令检测表", Order = 4)]
+        [JsonProperty("触发重读指令检测表", Order = 7)]
         public HashSet<string> Text { get; set; } = new HashSet<string>();
 
-        [JsonProperty("清理修改武器(丢出或放箱子会消失)", Order = 5)]
+        [JsonProperty("清理修改武器(丢出或放箱子会消失)", Order = 8)]
         public bool ClearItem = true;
-        [JsonProperty("免清表", Order = 6)]
+        [JsonProperty("免清表", Order = 9)]
         public int[] ExemptItems { get; set; } = new int[] { 1 };
 
         [JsonProperty("进服只给管理建数据", Order = 10)]
@@ -48,6 +55,7 @@ namespace ModifyWeapons
         public void Ints()
         {
             this.Text = new HashSet<string> { "deal", "shop", "fishshop", "fs" };
+            this.AloneList = new HashSet<string> { "/mw read" };
             this.ItemDatas = new List<ItemData>()
             {
                 new ItemData("",96,1,82,30,1,5.5f,10,15,10,9,0,97,default),

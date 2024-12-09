@@ -24,10 +24,12 @@ public class Database
         public int Process { get; set; }
         public bool Hand { get; set; }
         public bool Join { get; set; }
+        public bool Alone { get; set; }
         public DateTime ReadTime { get; set; }
         public DateTime SyncTime { get; set; }
+        public DateTime AloneTime { get; set; }
         public Dictionary<string, List<ItemData>> Dict { get; set; } = new Dictionary<string, List<ItemData>>();
-        internal PlayerData(string name = "",int readCount = 0, bool hand = false, bool join = true, DateTime? readTime = null, DateTime? syncTime = null, Dictionary<string, List<ItemData>>? dict = null, int process = 0)
+        internal PlayerData(string name = "",int readCount = 0, bool hand = false, bool join = true, DateTime? readTime = null, DateTime? syncTime = null, Dictionary<string, List<ItemData>>? dict = null, int process = 0, bool alone = false, DateTime? aloneTime = default)
         {
             this.Name = name ?? "";
             this.ReadCount = readCount;
@@ -37,6 +39,8 @@ public class Database
             this.SyncTime = syncTime ?? DateTime.UtcNow;
             this.Dict = dict ?? new Dictionary<string, List<ItemData>>();
             this.Process = process;
+            this.Alone = alone;
+            this.AloneTime = aloneTime ?? DateTime.UtcNow;
         }
 
         public class ItemData
@@ -90,8 +94,10 @@ public class Database
             new SqlColumn("IsProcess", MySqlDbType.Int32) { DefaultValue = "0" },
             new SqlColumn("Hand", MySqlDbType.Int32) { DefaultValue = "0" },
             new SqlColumn("IsJoin", MySqlDbType.Int32) { DefaultValue = "0" },
+            new SqlColumn("Alone", MySqlDbType.Int32) { DefaultValue = "0" },
             new SqlColumn("ReadTime", MySqlDbType.DateTime) { DefaultValue = "CURRENT_TIMESTAMP" },
             new SqlColumn("SyncTime", MySqlDbType.DateTime) { DefaultValue = "CURRENT_TIMESTAMP" },
+            new SqlColumn("AloneTime", MySqlDbType.DateTime) { DefaultValue = "CURRENT_TIMESTAMP" },
             new SqlColumn("Dict", MySqlDbType.LongText)  // 文本列，用于存储序列化的物品ID列表
         ));
     }
@@ -101,8 +107,8 @@ public class Database
     public bool AddData(PlayerData data)
     {
         var dictJson = JsonSerializer.Serialize(data.Dict, Options);
-        return TShock.DB.Query("INSERT INTO ModifyWeapons (Name, ReadCount,IsProcess, Hand, IsJoin, ReadTime, SyncTime, Dict) VALUES (@0, @1, @2, @3, @4, @5,@6, @7)",
-            data.Name, data.ReadCount, data.Process, data.Hand ? 1 : 0, data.Join ? 1 : 0, data.ReadTime, data.SyncTime, dictJson) != 0;
+        return TShock.DB.Query("INSERT INTO ModifyWeapons (Name, ReadCount,IsProcess, Hand, IsJoin,Alone, ReadTime, SyncTime,AloneTime, Dict) VALUES (@0, @1, @2, @3, @4, @5,@6, @7,@8,@9)",
+            data.Name, data.ReadCount, data.Process, data.Hand ? 1 : 0, data.Join ? 1 : 0, data.Alone ? 1 : 0, data.ReadTime, data.SyncTime, data.AloneTime, dictJson) != 0;
     }
     #endregion
 
@@ -111,8 +117,8 @@ public class Database
     {
         var dictJson = JsonSerializer.Serialize(data.Dict, Options);
 
-        return TShock.DB.Query("UPDATE ModifyWeapons SET ReadCount = @0,IsProcess = @1, Hand = @2, IsJoin = @3, ReadTime = @4,SyncTime = @5, Dict = @6 WHERE Name = @7",
-            data.ReadCount, data.Process, data.Hand ? 1 : 0, data.Join ? 1 : 0, data.ReadTime, data.SyncTime, dictJson, data.Name) != 0;
+        return TShock.DB.Query("UPDATE ModifyWeapons SET ReadCount = @0,IsProcess = @1, Hand = @2, IsJoin = @3, Alone = @4 ,ReadTime = @5, SyncTime = @6, AloneTime = @7, Dict = @8 WHERE Name = @9",
+            data.ReadCount, data.Process, data.Hand ? 1 : 0, data.Join ? 1 : 0, data.Alone ? 1 : 0, data.ReadTime, data.SyncTime, data.AloneTime, dictJson, data.Name) != 0;
     }
     #endregion
 
@@ -145,6 +151,8 @@ public class Database
                 hand: reader.Get<int>("Hand") == 1,
                 process: reader.Get<int>("IsProcess"),
                 join: reader.Get<int>("IsJoin") == 1,
+                alone: reader.Get<int>("Alone") == 1,
+                aloneTime: reader.Get<DateTime>("AloneTime"),
                 readTime: reader.Get<DateTime>("ReadTime"),
                 syncTime: reader.Get<DateTime>("SyncTime"),
                 dict: dict
@@ -206,6 +214,8 @@ public class Database
                 hand: reader.Get<int>("Hand") == 1,
                 process: reader.Get<int>("IsProcess"),
                 join: reader.Get<int>("IsJoin") == 1,
+                alone: reader.Get<int>("Alone") == 1,
+                aloneTime: reader.Get<DateTime>("AloneTime"),
                 readTime: reader.Get<DateTime>("ReadTime"),
                 syncTime: reader.Get<DateTime>("SyncTime"),
                 dict: dict

@@ -8,6 +8,13 @@
 ## Update Log
 
 ```
+v1.2.7
+Fixed a bug where all custom weapons modified by players were being overwritten by public weapons after using the /reload command.
+Corrected the "Public Weapons Updated" notification to only broadcast when data synchronization has not occurred.
+Added a delayed execution command after giving items (supports the 'up all give' subcommand): This avoids synchronization issues when creating RPG content and using the command: /mw g {0}, ensuring item data is synchronized promptly.
+In cases where the ["Create data for admins only on join"] option is not enabled: The 'up all give' command needs to be entered only once for data synchronization.
+This update ensures better synchronization of item data and improves the user experience by minimizing conflicts between player-customized weapons and public weapons.
+
 v1.2.6
 The following features were custom-made for server admin "556":
 To facilitate RPG configuration writing, placeholders {0} for the player's name have been added to the subcommands: up, del, give, all.
@@ -152,37 +159,42 @@ v1.0.0
 ```json
 {
   "Plugin Enabled": true,
-  "Initial Reload Times": 2,
-  "Only Give Specified Named Items": true,
+  "Initial Reload Attempts": 2,
+  "Give Only Specified Items by Name": true,
+  "Enable Delayed Execution Command After Giving Items": true,
+  "Delayed Command Milliseconds": 500.0,
+  "Delayed Command List": [
+    "/mw read"
+  ],
   "Auto Reload": 1,
-  "Trigger Reload Command Detection List": [
+  "Trigger Reload Command Check List": [
     "deal",
     "shop",
     "fishshop",
     "fs"
   ],
-  "Clear Modified Weapons (Disappear when thrown or placed in chests)": true,
-  "Exempt List": [
+  "Clean Modified Weapons (Dropped or Placed in Chests Will Disappear)": true,
+  "Exempt from Cleaning List": [
     1
   ],
-  "Join Only Gives Data For Admin": false,
-  "Increase Reload Times Cooling Seconds": 1800.0,
+  "Create Data for Admins Only on Join": false,
+  "Increase Reload Attempts Cooldown Seconds": 1800.0,
   "Enable Public Weapons": true,
-  "Sync Public Weapons Interval Seconds": 15,
-  "Public Weapon Broadcast Title": "Yu Xue's Server ",
-  "Public Weapons": [
+  "Data Sync Interval Seconds": 15,
+  "Public Weapons Broadcast Title": "YuXue Kaifang Server ",
+  "Public Weapons List": [
     {
-      "Name": "Musket",
+      "Name": "Firearm",
       "ID": 96,
       "Quantity": 1,
       "Prefix": 82,
-      "Damage": 60,
+      "Damage": 30,
       "Size": 1.0,
       "Knockback": 5.5,
-      "Use Speed": 32,
+      "Use Speed": 10,
       "Attack Speed": 15,
-      "Bullets": 10,
-      "Bullet Speed": 9.0,
+      "Projectile Type": 10,
+      "Projectile Speed": 9.0,
       "Ammo": 0,
       "Launcher": 97,
       "Color": {
@@ -195,17 +207,17 @@ v1.0.0
       }
     },
     {
-      "Name": "Death Gun",
+      "Name": "Deadly Gun",
       "ID": 800,
       "Quantity": 1,
       "Prefix": 82,
-      "Damage": 25,
+      "Damage": 35,
       "Size": 1.0,
       "Knockback": 2.5,
-      "Use Speed": 32,
+      "Use Speed": 10,
       "Attack Speed": 15,
-      "Bullets": 5,
-      "Bullet Speed": 6.0,
+      "Projectile Type": 5,
+      "Projectile Speed": 6.0,
       "Ammo": 0,
       "Launcher": 97,
       "Color": {

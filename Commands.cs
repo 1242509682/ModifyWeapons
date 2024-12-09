@@ -63,7 +63,12 @@ public class Commands
 
                         if (Config.Auto == 1)
                         {
-                            data.ReadCount += 2;
+                            DB.UpReadCount(plr.Name, 1);
+                        }
+
+                        if (Config.Alone)
+                        {
+                            DB.UpReadCount(plr.Name, 1);
                         }
 
                         UpdataRead(plr, data);
@@ -142,8 +147,8 @@ public class Commands
                                     var plr2 = TShock.Players.FirstOrDefault(p => p != null && p.IsLoggedIn && p.Active && p.Name == acc.Name);
                                     if (plr2 != null && data2 != null) // 如果目标玩家在线，则发送消息并直接重读数值
                                     {
-                                        data2.ReadCount += 2;
                                         data2.Process = 2;
+                                        DB.UpReadCount(plr2.Name, 2);
                                         plr2.SendMessage($"\n管理员 [c/D4E443:{plr.Name}] 已为所有玩家[c/92C5EC:手动重读]修改物品", 0, 196, 177);
                                         UpdataRead(plr2, data2);
                                     }
@@ -432,8 +437,10 @@ public class Commands
                                     Name = other,
                                     Hand = true,
                                     Join = true,
+                                    Alone = false,
                                     ReadCount = Config.ReadCount,
                                     Process = 0,
+                                    AloneTime = default,
                                     ReadTime = DateTime.UtcNow,
                                     SyncTime = DateTime.UtcNow,
                                     Dict = new Dictionary<string, List<Database.PlayerData.ItemData>>()
@@ -443,12 +450,18 @@ public class Commands
                             }
                             else
                             {
-                                datas.ReadCount += 2;
                                 datas.Process = 2;
+                                DB.UpReadCount(other, 2);
                                 var plr2 = TShock.Players.FirstOrDefault(p => p != null && p.IsLoggedIn && p.Active && p.Name == other);
                                 if (plr2 != null) //在线重读并通告玩家 物品修改信息
                                 {
                                     plr2.SendMessage($"\n管理员 [c/D4E443:{plr.Name}] 已发送修改物品: [c/92C5EC:{Lang.GetItemName(item.type)}]", 0, 196, 177);
+
+                                    if (Config.Alone)
+                                    {
+                                        datas.Alone = true;
+                                        datas.AloneTime = DateTime.UtcNow;
+                                    }
 
                                     OnlyItem(item, datas, plr2);
 
@@ -530,8 +543,10 @@ public class Commands
                                         Name = acc.Name,
                                         Hand = true,
                                         Join = true,
+                                        Alone = false,
                                         Process = 0,
                                         ReadCount = Config.ReadCount,
+                                        AloneTime = default,
                                         ReadTime = DateTime.UtcNow,
                                         SyncTime = DateTime.UtcNow,
                                         Dict = new Dictionary<string, List<Database.PlayerData.ItemData>>()
@@ -551,8 +566,14 @@ public class Commands
                                     var plr2 = TShock.Players.FirstOrDefault(p => p != null && p.IsLoggedIn && p.Active && p.Name == acc.Name);
                                     if (plr2 != null)// 如果目标玩家在线，则发送消息并直接重读数值
                                     {
-                                        datas.ReadCount += 2;
+                                        if (Config.Alone)
+                                        {
+                                            datas.Alone = true;
+                                            datas.AloneTime = DateTime.UtcNow;
+                                        }
+
                                         datas.Process = 2;
+                                        DB.UpReadCount(plr2.Name, 2);
                                         plr2.SendMessage($"\n管理员 [c/D4E443:{plr.Name}] 已发送修改物品: [c/92C5EC:{Lang.GetItemName(item.type)}]", 0, 196, 177);
 
                                         OnlyItem(item, datas, plr2);
@@ -581,7 +602,7 @@ public class Commands
                     break;
             }
         }
-    } 
+    }
     #endregion
 
     #region 菜单方法
@@ -698,7 +719,7 @@ public class Commands
                 plr2.GiveItem(item.type, item.maxStack);
             }
         }
-    } 
+    }
     #endregion
 
     #region 更新公用武器配置
@@ -757,7 +778,7 @@ public class Commands
         {
             plr.SendMessage("公用武器功能未启用或配置为空。", 255, 0, 0);
         }
-    } 
+    }
     #endregion
 
     #region 新物品属性
@@ -926,7 +947,6 @@ public class Commands
     private static void UpdatePT(string name, Item item, Dictionary<string, string> itemValues)
     {
         var mess = new StringBuilder();
-        mess.AppendFormat("数值不对手动重读:[c/94D3E4:/mw read]\n");
         mess.Append($"修改数值:");
         foreach (var kvp in itemValues)
         {
@@ -1039,7 +1059,6 @@ public class Commands
     public static bool UpdateItem(string name, int id, Dictionary<string, string> itemValues)
     {
         var mess = new StringBuilder();
-        mess.AppendFormat("数值不对手动重读:[c/94D3E4:/mw read]\n");
         mess.Append($"修改数值:");
 
         var datas = DB.GetData(name);
@@ -1149,13 +1168,18 @@ public class Commands
                     mess.AppendFormat("[c/94D3E4:{0}]([c/94D6E4:{1}]):[c/FF6975:{2}] ", propName, kvp.Key, kvp.Value);
                 }
 
-                datas.ReadCount += 2;
                 datas.Process = 2;
-
+                DB.UpReadCount(name, 2);
                 //判断玩家是否在线
                 var plr = TShock.Players.FirstOrDefault(p => p != null && p.IsLoggedIn && p.Active && p.Name == name);
                 if (plr != null)
                 {
+                    if (Config.Alone)
+                    {
+                        datas.Alone = true;
+                        datas.AloneTime = DateTime.UtcNow;
+                    }
+
                     plr.SendMessage($"[c/D4E443:管理员] 已修改你的: [c/92C5EC:{Lang.GetItemName(item.type)}]", 0, 196, 177);
                     plr.SendMessage(mess.ToString(), 255, 244, 150);
                     SaveItem(name, datas, item.type, item.stack, item.prefix, item.damage, item.scale, item.knockBack, item.useTime, item.useAnimation, item.shoot, item.shootSpeed, item.ammo, item.useAmmo, item.color);
@@ -1394,7 +1418,7 @@ public class Commands
         param(plr);
         plr.SendSuccessMessage("给别人指定物品并改参数,格式为:");
         plr.SendMessage("/mw g 玩家名 物品名 d 20 ua 10 …", Color.AntiqueWhite);
-        plr.SendInfoMessage("发3次:[c/91DFBB:建数据>发物品>同步数值]");
+        plr.SendInfoMessage("发2次:[c/91DFBB:建数据>发物品]");
     }
 
     private static void PwError(TSPlayer plr)
@@ -1413,7 +1437,7 @@ public class Commands
         param(plr);
         plr.SendSuccessMessage("给所有人指定物品并改参数,格式为:");
         plr.SendMessage("/mw all 物品名 d 200 ua 10 …", Color.AntiqueWhite);
-        plr.SendInfoMessage("\n发3次:[c/91DFBB:建数据>发物品>同步数值]");
+        plr.SendInfoMessage("\n发2次:[c/91DFBB:建数据>发物品]");
     }
 
     private static void UpdateError(TSPlayer plr)
