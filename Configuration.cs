@@ -1,5 +1,5 @@
-﻿using Newtonsoft.Json;
-using Microsoft.Xna.Framework;
+﻿using Microsoft.Xna.Framework;
+using Newtonsoft.Json;
 using TShockAPI;
 
 namespace ModifyWeapons
@@ -22,8 +22,6 @@ namespace ModifyWeapons
         [JsonProperty("延迟指令表", Order = 5)]
         public HashSet<string> AloneList { get; set; } = new HashSet<string>();
 
-        [JsonProperty("自动重读", Order = 6)]
-        public int Auto { get; set; } = 1;
         [JsonProperty("触发重读指令检测表", Order = 7)]
         public HashSet<string> Text { get; set; } = new HashSet<string>();
 
@@ -41,8 +39,8 @@ namespace ModifyWeapons
         [JsonProperty("启用公用武器", Order = 12)]
         public bool PublicWeapons { get; set; } = true;
 
-        [JsonProperty("同步数据秒数", Order = 13)]
-        public int SyncTime { get; set; } = 15;
+        [JsonProperty("每页显示武器数量", Order = 13)]
+        public int Page { get; set; } = 5;
 
         [JsonProperty("公用武器播报标题", Order = 14)]
         public string Title { get; set; } = "羽学开荒服 ";
@@ -51,21 +49,8 @@ namespace ModifyWeapons
         public List<ItemData>? ItemDatas { get; set; }
         #endregion
 
-        #region 预设参数方法
-        public void Ints()
-        {
-            this.Text = new HashSet<string> { "deal", "shop", "fishshop", "fs" };
-            this.AloneList = new HashSet<string> { "/mw read" };
-            this.ItemDatas = new List<ItemData>()
-            {
-                new ItemData("",96,1,82,30,1,5.5f,10,15,10,9,0,97,default),
-                new ItemData("",800,1,82,35,1,2.5f,10,15,5,6,0,97,default),
-            };
-        }
-        #endregion
-
         #region 公用武器数据结构
-        public class ItemData
+        public class ItemData : ItemProperties
         {
             [JsonProperty("名称", Order = 0)]
             public string Name { get; set; }
@@ -115,7 +100,39 @@ namespace ModifyWeapons
                 this.useAmmo = useAmmo;
                 this.color = color;
             }
-        } 
+
+            // 复制构造函数
+            public ItemData(ItemData other)
+            {
+                Name = other.Name;
+                type = other.type;
+                stack = other.stack;
+                prefix = other.prefix;
+                damage = other.damage;
+                scale = other.scale;
+                knockBack = other.knockBack;
+                useTime = other.useTime;
+                useAnimation = other.useAnimation;
+                shoot = other.shoot;
+                shootSpeed = other.shootSpeed;
+                ammo = other.ammo;
+                useAmmo = other.useAmmo;
+                color = other.color;
+            }
+        }
+        #endregion
+
+        #region 预设参数方法
+        public void Ints()
+        {
+            this.Text = new HashSet<string> { "deal", "shop", "fishshop", "fs" };
+            this.AloneList = new HashSet<string> { "/mw read" };
+            this.ItemDatas = new List<ItemData>()
+            {
+                new ItemData("",96,1,82,30,1,5.5f,10,15,10,9,0,97,default),
+                new ItemData("",800,1,82,35,1,2.5f,10,15,5,6,0,97,default),
+            };
+        }
         #endregion
 
         #region 读取与创建配置文件方法
