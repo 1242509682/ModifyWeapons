@@ -9,7 +9,7 @@ namespace ModifyWeapons;
 internal class Configuration
 {
     #region 实例变量
-    [JsonProperty("公用武器进度类型", Order = -1)]
+    [JsonProperty("公用武器进度类型", Order = -10)]
     public string[] ProgID { get; set; } = new string[]
     {
         "0 无 | 1 克眼 | 2 史王 | 3 世吞克脑 | 4 骷髅王 | 5 蜂王 | 6 巨鹿 | 7 肉后",
