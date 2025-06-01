@@ -8,6 +8,12 @@
 ## Update Log
 
 ```
+v1.3.0
+- Implemented caching technology for reload items (added a new configuration option: Cache Logging).
+- The cache will be cleared and reloaded from the database each time a database interaction occurs.
+- When a player triggers a reload, the item data will be retrieved from memory, reducing pressure on the database and improving performance for item reloading.
+- The progression restrictions for public weapons no longer apply to administrators with the mw.admin permission.
+
 v1.2.9
 - Added logic for `/reload` to reload shared weapons for online players.
 - Fixed issue where shared weapons were not immediately reloaded upon login or during online sessions.

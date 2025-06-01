@@ -243,7 +243,7 @@ internal class MessageManager
 
     #region 进度名称辅助方法
     // 获取进度的中文名称
-    internal static string GetProgressChineseName(ProgressType progress)
+    internal static string GetChineseName(ProgressType progress)
     {
         var names = GetProgressChineseNames(progress);
         return names.Length > 0 ? names[0] : progress.ToString();

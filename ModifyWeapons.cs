@@ -2,10 +2,8 @@
 using Terraria;
 using TerrariaApi.Server;
 using TShockAPI;
-using TShockAPI.DB;
 using TShockAPI.Hooks;
 using static ModifyWeapons.Configuration;
-using static MonoMod.InlineRT.MonoModRule;
 using static TShockAPI.GetDataHandlers;
 
 namespace ModifyWeapons;
@@ -50,9 +48,13 @@ public class Plugin : TerrariaPlugin
     }
     #endregion
 
+    #region 全局变量
+    public static Database DB = new(); // 数据库
+    internal static Caches Cache = new(); // 内存缓存
+    internal static Configuration Config = new(); // 配置文件
+    #endregion
+
     #region 配置重载读取与写入方法
-    public static Database DB = new();
-    internal static Configuration Config = new();
     private static void ReloadConfig(ReloadEventArgs args)
     {
         LoadConfig();
@@ -114,8 +116,8 @@ public class Plugin : TerrariaPlugin
     #endregion
 
     #region 延时指令方法
-    public static Dictionary<string, DateTime> Timer = new Dictionary<string, DateTime>();
-    public static Dictionary<string, bool> reads = new Dictionary<string, bool>();
+    public static Dictionary<string, DateTime> DelayCooldown = new Dictionary<string, DateTime>();
+    public static Dictionary<string, bool> DelayFlag = new Dictionary<string, bool>();
     private void OnPlayerUpdate(object? sender, PlayerUpdateEventArgs e)
     {
         var plr = e.Player;
@@ -123,24 +125,24 @@ public class Plugin : TerrariaPlugin
         if (plr == null || !plr.IsLoggedIn || !plr.Active ||
             !Config.Enabled || !Config.Alone) return;
 
-        if (!reads.ContainsKey(plr.Name))
+        if (!DelayFlag.ContainsKey(plr.Name))
         {
-            reads[plr.Name] = false;
+            DelayFlag[plr.Name] = false;
         }
 
-        if (!Timer.ContainsKey(plr.Name))
+        if (!DelayCooldown.ContainsKey(plr.Name))
         {
-            Timer[plr.Name] = now;
+            DelayCooldown[plr.Name] = now;
         }
 
         // 触发延迟指令
-        if (reads[plr.Name])
+        if (DelayFlag[plr.Name])
         {
-            if ((now - Timer[plr.Name]).TotalMilliseconds >= Config.AloneTimer)
+            if ((now - DelayCooldown[plr.Name]).TotalMilliseconds >= Config.DelayCMDTimer)
             {
                 DelayCommand(plr);
-                Timer[plr.Name] = now;
-                reads[plr.Name] = false;
+                DelayCooldown[plr.Name] = now;
+                DelayFlag[plr.Name] = false;
             }
         }
     }
@@ -164,8 +166,8 @@ public class Plugin : TerrariaPlugin
             var inv = plr.TPlayer.inventory[i];
             if (IsModifiedWeapon(plr.Name, inv.type))
             {
-                reads[plr.Name] = true;
-                Timer[plr.Name] = DateTime.UtcNow;
+                DelayFlag[plr.Name] = true;
+                DelayCooldown[plr.Name] = DateTime.UtcNow;
             }
         }
     }
@@ -245,6 +247,75 @@ public class Plugin : TerrariaPlugin
     {
         var dbItem = DB.GetData2(playerName, itemType);
         return dbItem != null;
+    }
+    #endregion
+
+    #region 更新所有修改武器数据缓存
+    public static DateTime LoggedTimer = DateTime.UtcNow;
+    public static void UpdateCache()
+    {
+        if (Cache.WeaponsCache == null)
+        {
+            Cache.WeaponsCache = new List<Database.MyItemData>();
+        }
+        else
+        {
+            Cache.WeaponsCache.Clear();
+        }
+
+        if (!Config.Enabled || !Config.PublicWeapons)
+        {
+            TShock.Log.ConsoleError("[修改武器] 插件未启用或公用武器未开启，无法缓存数据。");
+            return;
+        }
+
+        var all = DB.GetAll2();
+        if (all == null || all.Count == 0)
+        {
+            TShock.Log.ConsoleError("[修改武器] 没有找到任何修改武器数据。");
+            Cache.WeaponsCache.Clear();
+            return;
+        }
+
+        // 使用 AddRange 高效添加所有数据
+        Cache.WeaponsCache.AddRange(all);
+
+        // 输出缓存信息到控制台
+        if (Config.CacheLog && (DateTime.UtcNow - LoggedTimer).TotalMilliseconds >= 500)
+        {
+            var form = new List<string>();
+            var names = new List<string>();
+
+            foreach (var weapon in Cache.WeaponsCache)
+            {
+                if (weapon == null || weapon.type <= 0)
+                {
+                    continue;
+                }
+
+                form.Add(weapon.PlayerName);
+
+                var itemInfo = TShock.Utils.GetItemById(weapon.type);
+                if (itemInfo != null)
+                {
+                    names.Add($"{itemInfo.Name}({weapon.type})");
+                }
+                else
+                {
+                    names.Add($"未知物品(ID:{weapon.type})");
+                }
+            }
+
+            // 输出日志信息
+            TShock.Log.ConsoleInfo($"\n已成功缓存 {Cache.WeaponsCache.Count} 个修改物品:");
+            if (names.Count > 0)
+            {
+                TShock.Log.ConsoleInfo(string.Join(", ", names.Distinct()));
+            }
+            TShock.Log.ConsoleError($"来源: {string.Join(", ", form.Distinct())}\n");
+
+            LoggedTimer = DateTime.UtcNow;
+        }
     }
     #endregion
 

@@ -137,6 +137,8 @@ internal class PublicWeapons
                 }
             }
 
+            // 更新玩家的物品缓存
+            UpdateCache();
             // 重读玩家的物品数据
             Commands.ReloadItem(plr);
         }

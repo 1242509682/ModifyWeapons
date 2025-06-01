@@ -22,43 +22,38 @@ internal class Configuration
         "51 满月 | 52 亏凸月 | 53 下弦月 | 54 残月 | 55 新月 | 56 娥眉月 | 57 上弦月 | 58 盈凸月",
     };
 
-    [JsonProperty("插件开关", Order = 0)]
+    [JsonProperty("插件开关", Order = -2)]
     public bool Enabled { get; set; } = true;
-
-    [JsonProperty("初始重读次数", Order = 1)]
-    public int ReadCount { get; set; } = 2;
-
-    [JsonProperty("给完物品的延迟指令", Order = 3)]
-    public bool Alone { get; set; } = true;
-    [JsonProperty("延迟指令毫秒", Order = 4)]
-    public float AloneTimer { get; set; } = 500.0f;
-    [JsonProperty("延迟指令表", Order = 5)]
-    public HashSet<string> AloneList { get; set; } = new HashSet<string>();
-
-    [JsonProperty("触发重读指令检测表", Order = 7)]
-    public HashSet<string> Text { get; set; } = new HashSet<string>();
-
-    [JsonProperty("清理修改武器(丢出或放箱子会消失)", Order = 8)]
-    public bool ClearItem = true;
-    [JsonProperty("免清表", Order = 9)]
-    public int[] ExemptItems { get; set; } = new int[] { 1 };
-
-    [JsonProperty("进服只给管理建数据", Order = 10)]
+    [JsonProperty("缓存日志", Order = -1)]
+    public bool CacheLog { get; set; } = true;
+    [JsonProperty("进服只给管理建数据", Order = 0)]
     public bool Enabled2 { get; set; } = false;
-
-    [JsonProperty("增加重读次数的冷却秒数", Order = 11)]
+    [JsonProperty("每页显示武器数量", Order = 1)]
+    public int Page { get; set; } = 5;
+    [JsonProperty("初始重读次数", Order = 2)]
+    public int ReadCount { get; set; } = 2;
+    [JsonProperty("增加重读次数的冷却秒数", Order = 3)]
     public float ReadTime { get; set; } = 1800;
 
-    [JsonProperty("启用公用武器", Order = 12)]
+    [JsonProperty("给完物品的延迟指令", Order = 4)]
+    public bool Alone { get; set; } = true;
+    [JsonProperty("延迟指令毫秒", Order = 5)]
+    public float DelayCMDTimer { get; set; } = 500.0f;
+    [JsonProperty("延迟指令表", Order = 6)]
+    public HashSet<string> AloneList { get; set; } = new HashSet<string>();
+
+    [JsonProperty("清理修改武器(丢出或放箱子会消失)", Order = 7)]
+    public bool ClearItem = true;
+    [JsonProperty("免清表", Order = 8)]
+    public int[] ExemptItems { get; set; } = new int[] { 1 };
+    [JsonProperty("触发重读指令检测表", Order = 9)]
+    public HashSet<string> Text { get; set; } = new HashSet<string>();
+
+    [JsonProperty("启用公用武器", Order = 10)]
     public bool PublicWeapons { get; set; } = true;
-
-    [JsonProperty("每页显示武器数量", Order = 13)]
-    public int Page { get; set; } = 5;
-
-    [JsonProperty("公用武器播报标题", Order = 14)]
+    [JsonProperty("公用武器播报标题", Order = 11)]
     public string Title { get; set; } = "羽学开荒服 ";
-
-    [JsonProperty("公用武器表", Order = 15)]
+    [JsonProperty("公用武器表", Order = 12)]
     public List<ItemData>? ItemDatas { get; set; }
     #endregion
 

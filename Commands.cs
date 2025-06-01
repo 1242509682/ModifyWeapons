@@ -103,6 +103,7 @@ public class Commands
                         if (DB.DeleteData(other))
                         {
                             plr.SendSuccessMessage($"已[c/E8585B:删除] {other} 的数据！");
+                            UpdateCache(); // 更新缓存
                         }
                         else
                         {
@@ -303,6 +304,7 @@ public class Commands
                             if (DB.RemovePwData(item.type))
                             {
                                 plr.SendSuccessMessage($"已成功从所有玩家的公用武器配置中移除物品 [c/92C5EC:{Lang.GetItemNameValue(item.type)}]");
+                                UpdateCache(); // 更新缓存
                             }
                             else
                             {
@@ -378,7 +380,7 @@ public class Commands
                                     if (found)
                                     {
                                         Config.Write();
-                                        plr.SendMessage($"已更新公用武器 [{Lang.GetItemNameValue(item3.type)}] 的进度为: {GetProgressChineseName(type)}", 0, 255, 0);
+                                        plr.SendMessage($"已更新公用武器 [{Lang.GetItemNameValue(item3.type)}] 的进度为: {GetChineseName(type)}", 0, 255, 0);
                                     }
                                     else
                                     {
@@ -564,8 +566,8 @@ public class Commands
 
                                     if (Config.Alone)
                                     {
-                                        reads[plr2.Name] = true;
-                                        Plugin.Timer[plr2.Name] = DateTime.UtcNow;
+                                        DelayFlag[plr2.Name] = true;
+                                        Plugin.DelayCooldown[plr2.Name] = DateTime.UtcNow;
                                     }
 
                                     UpdatePT(plr2.Name, item, ItemVal);
@@ -691,8 +693,8 @@ public class Commands
                                     {
                                         if (Config.Alone)
                                         {
-                                            reads[plr2.Name] = true;
-                                            Plugin.Timer[plr2.Name] = DateTime.UtcNow;
+                                            DelayFlag[plr2.Name] = true;
+                                            Plugin.DelayCooldown[plr2.Name] = DateTime.UtcNow;
                                         }
 
                                         plr2.SendMessage($"\n管理员 [c/D4E443:{plr.Name}] 已发送修改物品: [c/92C5EC:{Lang.GetItemName(item.type)}]", 0, 196, 177);
@@ -876,13 +878,14 @@ public class Commands
                 continue;
             }
 
-            var data2 = DB.GetData2(plr.Name, inv.type);
-            if (data2 == null) continue;
+            // 采用缓存读取数据并更新
+            var data = Cache.WeaponsCache.FirstOrDefault(c => c != null && c.PlayerName == plr.Name && c.type == inv.type);
+            if (data == null) continue;
 
             bool flag = false; // 新增：标记当前物品是否应跳过
 
             // 修改进度检查逻辑：只检查当前物品
-            if (Config.PublicWeapons && Config.ItemDatas != null)
+            if (Config.PublicWeapons && Config.ItemDatas != null && !plr.HasPermission("mw.admin"))
             {
                 // 直接查找当前物品类型的配置（而非遍历所有）
                 var citem = Config.ItemDatas.FirstOrDefault(c => c.type == inv.type);
@@ -891,7 +894,7 @@ public class Commands
                     if (!ProgressChecker.IsProgress(citem.Progress))
                     {
                         var pt = citem.Progress;
-                        string chineseName = GetProgressChineseName(pt);
+                        string chineseName = GetChineseName(pt);
                         plr.SendMessage($"[i/s{1}:{inv.type}] 不满足进度: [{(int)pt}] {chineseName} 禁止重读", 250, 240, 150);
                         flag = true; // 标记跳过但不中断循环
                         found = true; // 记录存在无效物品
@@ -907,9 +910,9 @@ public class Commands
             var MyItem = Item.NewItem(null, (int)plr.X, (int)plr.Y, item.width, item.height, item.type, item.stack);
             var newItem = Main.item[MyItem];
 
-            MyNewItem(plr, item, newItem, data2.damage, data2.stack, data2.prefix, data2.scale,
-                      data2.knockBack, data2.useTime, data2.useAnimation, data2.shoot,
-                      data2.shootSpeed, data2.ammo, data2.useAmmo);
+            MyNewItem(plr, item, newItem, data.damage, data.stack, data.prefix, data.scale,
+                      data.knockBack, data.useTime, data.useAnimation, data.shoot,
+                      data.shootSpeed, data.ammo, data.useAmmo);
 
             inv.SetDefaults(0);
             NetMessage.SendData(5, -1, -1, null, plr.Index, i);
@@ -1233,8 +1236,8 @@ public class Commands
             {
                 if (Config.Alone)
                 {
-                    reads[plr.Name] = true;
-                    Plugin.Timer[plr.Name] = DateTime.UtcNow;
+                    DelayFlag[plr.Name] = true;
+                    Plugin.DelayCooldown[plr.Name] = DateTime.UtcNow;
                 }
 
                 plr.SendMessage(mess.ToString(), 255, 244, 150);
@@ -1257,6 +1260,7 @@ public class Commands
         // 1. 先从数据库查找该玩家是否有这个类型的物品
         var Items = DB.GetAll2().Where(d => d.PlayerName == name && d.type == type).ToList();
 
+        // 2. 添加或更新数据
         if (Items.Count > 0)
         {
             // 如果存在，则更新第一个匹配项（也可以根据ID等唯一标识更精确）
@@ -1298,6 +1302,9 @@ public class Commands
 
             DB.AddData2(newItem); // 插入数据库
         }
+
+        // 3. 从数据库更新到缓存
+        UpdateCache();
     }
     #endregion
 
