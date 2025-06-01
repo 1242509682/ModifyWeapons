@@ -8,6 +8,35 @@
 ## Update Log
 
 ```
+v1.2.9
+- Added logic for `/reload` to reload shared weapons for online players.
+- Fixed issue where shared weapons were not immediately reloaded upon login or during online sessions.
+- Improved `give` and `all` commands: now requires two executions — one to add data and another to grant items.
+- Prefixes are no longer fetched from held items to prevent prefix loss when reloading shared weapons.
+- Using `give`, `all`, or `up` commands no longer consumes reload attempts.
+- Players without reload attempts will have shared weapons auto-reloaded upon rejoining the server.
+- Removed unnecessary "Only Give Specified Named Items" configuration option.
+- Introduced new command: `/mw p jd` — sets progress value for shared weapons; prevents reloading if progress does not match.
+- Empty input for `/mw p jd` displays progress table. Supports Chinese, English, or numeric input for progress values.
+
+Note:
+Retaining reload attempt limits is to prevent abuse by malicious players exploiting lag-induced item duplication bugs.
+Unless necessary, avoid increasing reload attempt counts unnecessarily.
+
+Note:
+The reload count limit is retained to prevent abuse by malicious players,
+which may cause item duplication bugs due to server lag.
+Unless necessary, do not increase the reload count unnecessarily.
+
+v1.2.8
+- Updated compatibility with TShock 5.2.4.
+- Improved dual-table storage: separated player-specific and shared weapon data.
+- Removed `/mw auto` command and its auto-reload function (considered unnecessary).
+- Stopped writing public weapons on `PlayerUpdate`, instead handling sync via `/reload`.
+  This improves performance and avoids unnecessary overhead.
+- Fixed issue where `/mw` command menu could not be displayed in console.
+- Added configuration option for number of weapons per page in `/mw list`.
+
 v1.2.7
 Fixed a bug where all custom weapons modified by players were being overwritten by public weapons after using the /reload command.
 Corrected the "Public Weapons Updated" notification to only broadcast when data synchronization has not occurred.
@@ -139,7 +168,6 @@ v1.0.0
 | /mw join | /mw j |   mw.use    |    Toggle switch for login reload    |
 | /mw list | /mw l |   mw.use    |    List all modified items    |
 | /mw read | None |   mw.use    |    Manually reload all modified items    |
-| /mw auto | /mw at |   mw.admn    |    Toggle the automatic reload feature    |
 | /mw clear | /mw cr |   mw.admin    |    Toggle the automatic cleanup feature    |
 | /mw open PlayerName | /mw op |   mw.admin    |    Switch another player's login reload state    |
 | /mw add PlayerName Count | None |   mw.admin    |    Add reload counts    |
@@ -158,75 +186,69 @@ v1.0.0
 > Configuration file location：tshock/修改武器.json
 ```json
 {
-  "Plugin Enabled": true,
-  "Initial Reload Attempts": 2,
-  "Give Only Specified Items by Name": true,
-  "Enable Delayed Execution Command After Giving Items": true,
-  "Delayed Command Milliseconds": 500.0,
-  "Delayed Command List": [
+  "PluginEnabled": true,
+  "InitialReloadCount": 2,
+  "EnableDelayCommands": true,
+  "DelayMilliseconds": 500.0,
+  "DelayCommands": [
     "/mw read"
   ],
-  "Auto Reload": 1,
-  "Trigger Reload Command Check List": [
+  "TriggerReloadOnEconomyCommands": [
     "deal",
     "shop",
     "fishshop",
     "fs"
   ],
-  "Clean Modified Weapons (Dropped or Placed in Chests Will Disappear)": true,
-  "Exempt from Cleaning List": [
+  "AutoCleanOnDropOrPutInChest": true,
+  "ExemptCleanList": [
     1
   ],
-  "Create Data for Admins Only on Join": false,
-  "Increase Reload Attempts Cooldown Seconds": 1800.0,
-  "Enable Public Weapons": true,
-  "Data Sync Interval Seconds": 15,
-  "Public Weapons Broadcast Title": "YuXue Kaifang Server ",
-  "Public Weapons List": [
+  "OnlyGiveAdminsOnJoin": false,
+  "ReloadCooldownSeconds": 1800.0,
+  "EnablePublicWeapons": true,
+  "ItemsPerPage": 5,
+  "PublicWeaponBroadcastTitle": "Yuxue Hardcore Server ",
+  "PublicWeaponList": [
     {
-      "Name": "Firearm",
+      "Name": "Musket",
       "ID": 96,
-      "Quantity": 1,
+      "Stack": 1,
       "Prefix": 82,
       "Damage": 30,
-      "Size": 1.0,
+      "Scale": 1.0,
       "Knockback": 5.5,
-      "Use Speed": 10,
-      "Attack Speed": 15,
-      "Projectile Type": 10,
-      "Projectile Speed": 9.0,
+      "UseTime": 10,
+      "UseAnimation": 15,
+      "Shoot": 10,
+      "ShootSpeed": 9.0,
       "Ammo": 0,
-      "Launcher": 97,
+      "UseAmmo": 97,
       "Color": {
-        "packedValue": 0,
         "R": 0,
         "G": 0,
         "B": 0,
-        "A": 0,
-        "PackedValue": 0
+        "A": 0
       }
     },
     {
-      "Name": "Deadly Gun",
+      "Name": "Deathbringer",
       "ID": 800,
-      "Quantity": 1,
+      "Stack": 1,
       "Prefix": 82,
       "Damage": 35,
-      "Size": 1.0,
+      "Scale": 1.0,
       "Knockback": 2.5,
-      "Use Speed": 10,
-      "Attack Speed": 15,
-      "Projectile Type": 5,
-      "Projectile Speed": 6.0,
+      "UseTime": 10,
+      "UseAnimation": 15,
+      "Shoot": 5,
+      "ShootSpeed": 6.0,
       "Ammo": 0,
-      "Launcher": 97,
+      "UseAmmo": 97,
       "Color": {
-        "packedValue": 0,
         "R": 0,
         "G": 0,
         "B": 0,
-        "A": 0,
-        "PackedValue": 0
+        "A": 0
       }
     }
   ]

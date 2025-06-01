@@ -16,7 +16,7 @@ public class Plugin : TerrariaPlugin
     #region 插件信息
     public override string Name => "修改武器";
     public override string Author => "羽学";
-    public override Version Version => new Version(1, 2, 8);
+    public override Version Version => new Version(1, 2, 9);
     public override string Description => "修改玩家物品数据并自动储存重读,可使用/mw指令给予玩家指定属性的物品";
     #endregion
 
@@ -95,7 +95,6 @@ public class Plugin : TerrariaPlugin
                 Hand = true,
                 Join = true,
                 ReadCount = Config.ReadCount,
-                Process = 0,
                 ReadTime = DateTime.UtcNow,
             };
 
@@ -103,8 +102,6 @@ public class Plugin : TerrariaPlugin
         }
         else if (data.Join)
         {
-            data.Process = 2;
-            DB.UpdateData(data);
             Commands.UpdataRead(plr, data);
         }
 

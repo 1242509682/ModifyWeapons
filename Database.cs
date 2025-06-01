@@ -1,7 +1,5 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using MySql.Data.MySqlClient;
 using Microsoft.Xna.Framework;
+using MySql.Data.MySqlClient;
 using TShockAPI;
 using TShockAPI.DB;
 
@@ -14,18 +12,16 @@ public class Database
     {
         public string Name { get; set; }
         public int ReadCount { get; set; }
-        public int Process { get; set; }
         public bool Hand { get; set; }
         public bool Join { get; set; }
         public DateTime ReadTime { get; set; }
-        internal PlayerData(string name = "", int readCount = 0, bool hand = false, bool join = true, DateTime? readTime = null, int process = 0)
+        internal PlayerData(string name = "", int readCount = 0, bool hand = false, bool join = true, DateTime? readTime = default)
         {
             this.Name = name ?? "";
             this.ReadCount = readCount;
             this.Hand = hand;
             this.Join = join;
             this.ReadTime = readTime ?? DateTime.UtcNow;
-            this.Process = process;
         }
     }
 
@@ -82,7 +78,6 @@ public class Database
             new SqlColumn("ID", MySqlDbType.Int32) { Primary = true, Unique = true, AutoIncrement = true }, // 主键列
             new SqlColumn("Name", MySqlDbType.TinyText) { NotNull = true }, // 非空字符串列
             new SqlColumn("ReadCount", MySqlDbType.Int32) { DefaultValue = "0" },
-            new SqlColumn("IsProcess", MySqlDbType.Int32) { DefaultValue = "0" },
             new SqlColumn("Hand", MySqlDbType.Int32) { DefaultValue = "0" },
             new SqlColumn("IsJoin", MySqlDbType.Int32) { DefaultValue = "0" },
             new SqlColumn("ReadTime", MySqlDbType.DateTime) { DefaultValue = "CURRENT_TIMESTAMP" }
@@ -118,7 +113,8 @@ public class Database
     #region 为玩家创建数据方法
     public bool AddData(PlayerData data)
     {
-        var tb1 = TShock.DB.Query("INSERT INTO " + WeaponsPlayer + " (Name, ReadCount, IsProcess, Hand, IsJoin, ReadTime) VALUES (@0, @1, @2, @3, @4, @5)", data.Name, data.ReadCount, data.Process, data.Hand ? 1 : 0, data.Join ? 1 : 0, data.ReadTime);
+        var tb1 = TShock.DB.Query("INSERT INTO " + WeaponsPlayer + " (Name, ReadCount, Hand, IsJoin, ReadTime) VALUES (@0, @1, @2, @3, @4)", 
+            data.Name, data.ReadCount, data.Hand ? 1 : 0, data.Join ? 1 : 0, data.ReadTime);
 
         return tb1 != 0;
     }
@@ -140,7 +136,8 @@ public class Database
     #region 更新数据内容方法
     public bool UpdateData(PlayerData data)
     {
-        var tb1 = TShock.DB.Query("UPDATE " + WeaponsPlayer + " SET ReadCount = @0,IsProcess = @1, Hand = @2, IsJoin = @3, ReadTime = @4 WHERE Name = @5", data.ReadCount, data.Process, data.Hand ? 1 : 0, data.Join ? 1 : 0, data.ReadTime, data.Name);
+        var tb1 = TShock.DB.Query("UPDATE " + WeaponsPlayer + " SET ReadCount = @0, Hand = @1, IsJoin = @2, ReadTime = @3 WHERE Name = @4",
+            data.ReadCount, data.Hand ? 1 : 0, data.Join ? 1 : 0, data.ReadTime, data.Name);
 
         return tb1 != 0;
     }
@@ -160,7 +157,7 @@ public class Database
     #endregion
 
     #region 增加指定玩家重读次数方法
-    public bool UpReadCount(string name, int num)
+    public bool AddReadCount(string name, int num)
     {
         return TShock.DB.Query("UPDATE " + WeaponsPlayer + " SET ReadCount = ReadCount + @0 WHERE Name = @1", num, name) != 0;
     }
@@ -185,7 +182,6 @@ public class Database
                 name: reader.Get<string>("Name"),
                 readCount: reader.Get<int>("ReadCount"),
                 hand: reader.Get<int>("Hand") == 1,
-                process: reader.Get<int>("IsProcess"),
                 join: reader.Get<int>("IsJoin") == 1,
                 readTime: reader.Get<DateTime>("ReadTime")
                 );
@@ -239,7 +235,6 @@ public class Database
                 name: reader.Get<string>("Name"),
                 readCount: reader.Get<int>("ReadCount"),
                 hand: reader.Get<int>("Hand") == 1,
-                process: reader.Get<int>("IsProcess"),
                 join: reader.Get<int>("IsJoin") == 1,
                 readTime: reader.Get<DateTime>("ReadTime")
             ));

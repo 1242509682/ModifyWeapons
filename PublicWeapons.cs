@@ -30,7 +30,7 @@ internal class PublicWeapons
         // 获取所有在线玩家
         var onlinePlayers = TShock.Players.Where(p => p != null && p.IsLoggedIn && p.Active).ToList();
 
-        if (!onlinePlayers.Any())return;
+        if (!onlinePlayers.Any()) return;
 
         // 存储要发送的消息：TSPlayer -> List<message>
         var messages = new Dictionary<TSPlayer, List<string>>();
@@ -136,6 +136,9 @@ internal class PublicWeapons
                     DB.AddData2(newData2);
                 }
             }
+
+            // 重读玩家的物品数据
+            Commands.ReloadItem(plr);
         }
     }
     #endregion
@@ -151,9 +154,8 @@ internal class PublicWeapons
             if (Count != Config.ItemDatas.Count)
             {
                 Config.Write();
+                TSPlayer.All.SendMessage($"[c/AD89D5:公][c/D68ACA:用][c/DF909A:武][c/E5A894:器]: [i/s{1}:{type}] 已被 {plr.Name} 移除", 240, 250, 150);
             }
-
-            TSPlayer.All.SendMessage($"[c/AD89D5:公][c/D68ACA:用][c/DF909A:武][c/E5A894:器]: [i/s{1}:{type}] 已被 {plr.Name} 移除", 240, 250, 150);
         }
         else
         {
@@ -213,6 +215,7 @@ internal class PublicWeapons
 
         // 同步数据库
         AddPublicWeapons(plr);
+
     }
     #endregion
 
@@ -262,6 +265,6 @@ internal class PublicWeapons
                 }
             }
         }
-    } 
+    }
     #endregion
 }

@@ -1,5 +1,7 @@
-﻿using System.Text;
+﻿using System.Reflection;
+using System.Text;
 using Microsoft.Xna.Framework;
+using ModifyWeapons.Progress;
 using Terraria;
 using TShockAPI;
 using static ModifyWeapons.Plugin;
@@ -177,7 +179,7 @@ internal class MessageManager
         plr.SendMessage("除了[c/DADEA0:/mw up]其他都会还原数值再修改", Color.YellowGreen);
         plr.SendMessage("伤害[c/FF6975:d] 数量[c/74E55D:sk] 前缀[c/74E55D:pr] 大小[c/5C9EE1:sc] \n" +
             "击退[c/F79361:kb] 用速[c/74E55D:ut] 攻速[c/F7B661:ua] 射速[c/F7F261:ss] \n" +
-            "弹幕[c/A3E295:sh] 弹药[c/91DFBB:m] 发射器[c/5264D9:aa] 颜色[c/5264D9:hc]", 141, 209, 214);
+            "弹幕[c/A3E295:sh] 弹药[c/91DFBB:m] 发射器[c/5264D9:aa] 颜色[c/5264D9:hc] \n", 141, 209, 214);
     }
 
     public static void SetError(TSPlayer plr)
@@ -202,6 +204,7 @@ internal class MessageManager
         plr.SendMessage("格式1:/mw p 物品名 d 20 … 添加或修改", Color.AntiqueWhite);
         plr.SendMessage("格式2:/mw p on与off 公用武器开关", Color.AntiqueWhite);
         plr.SendMessage("格式3:/mw p del 物品名 删除玩家指定武器", Color.AntiqueWhite);
+        plr.SendMessage("格式4:/mw p jd 物品名 进度值", Color.AntiqueWhite);
         plr.SendInfoMessage("使用指令修改[c/91DFBB:配置] 自动写入所有玩家数据");
         plr.SendSuccessMessage("公用武器数据优先级 ＞ 给物品指令数据");
     }
@@ -211,7 +214,7 @@ internal class MessageManager
         param(plr);
         plr.SendSuccessMessage("给所有人指定物品并改参数,格式为:");
         plr.SendMessage("/mw all 物品名 d 200 ua 10 …", Color.AntiqueWhite);
-        plr.SendInfoMessage("\n发2次:[c/91DFBB:建数据>发物品]");
+        plr.SendInfoMessage("发2次:[c/91DFBB:建数据>发物品]");
     }
 
     public static void UpdateError(TSPlayer plr)
@@ -219,6 +222,60 @@ internal class MessageManager
         param(plr);
         plr.SendInfoMessage("\n保留原有修改参数进行二次更改,格式为:");
         plr.SendMessage("/mw up 玩家名 物品名 d 20 ua 10", Color.AntiqueWhite);
+    }
+
+    public static void ProgressError(TSPlayer plr)
+    {
+        plr.SendMessage("\n可用进度值:", 255, 255, 0);
+
+        // 获取所有进度类型及其中文名称
+        var list = Enum.GetValues(typeof(ProgressType)).Cast<ProgressType>().Select(p => new { Index = (int)p, Value = p, Names = GetProgressChineseNames(p) }).OrderBy(p => p.Index).ToList();
+
+        // 显示进度列表
+        foreach (var pt in list)
+        {
+            string names = string.Join("/", pt.Names);
+            plr.SendMessage($"[{pt.Index}] {pt.Value} = {names}", 200, 200, 255);
+        }
+        plr.SendMessage("使用方法: /mw p jd <物品名> <进度值>", 255, 0, 0);
+    }
+    #endregion
+
+    #region 进度名称辅助方法
+    // 获取进度的中文名称
+    internal static string GetProgressChineseName(ProgressType progress)
+    {
+        var names = GetProgressChineseNames(progress);
+        return names.Length > 0 ? names[0] : progress.ToString();
+    }
+
+    // 获取进度的所有中文别名
+    internal static string[] GetProgressChineseNames(ProgressType progress)
+    {
+        var memberInfo = typeof(ProgressType).GetMember(progress.ToString());
+        if (memberInfo.Length > 0)
+        {
+            var attr = memberInfo[0].GetCustomAttribute<ProgressName>();
+            if (attr != null && attr.Names.Length > 0)
+            {
+                return attr.Names;
+            }
+        }
+        return new[] { progress.ToString() };
+    }
+
+    // 通过中文名查找进度类型
+    internal static ProgressType? FindProgressTypeByChineseName(string name)
+    {
+        foreach (ProgressType value in Enum.GetValues(typeof(ProgressType)))
+        {
+            var names = GetProgressChineseNames(value);
+            if (names.Any(n => n.Equals(name, StringComparison.OrdinalIgnoreCase)))
+            {
+                return value;
+            }
+        }
+        return null;
     }
     #endregion
 

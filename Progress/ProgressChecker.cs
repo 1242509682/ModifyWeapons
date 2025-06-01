@@ -6,7 +6,7 @@ namespace ModifyWeapons.Progress;
 
 public class ProgressChecker
 {
-    internal static bool IsProgress(PacketTypes pt)
+    internal static bool IsProgress(ProgressType pt)
     {
         // 获取枚举成员信息
         var mi = typeof(ProgressType).GetMember(pt.ToString());
